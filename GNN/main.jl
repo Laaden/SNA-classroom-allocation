@@ -3,6 +3,11 @@ include.(["./src/data_loader.jl", "./src/types.jl", "./src/loss.jl"])
 using Statistics, Graphs, Flux, GraphNeuralNetworks, Random, Zygote, DataFrames, CUDA
 using .DataLoader, .Types, .Loss
 
+# Use CUDA to offload training to the GPU, more performant
+# uncomment to use cpu instead
+# ENV["CUDA_VISIBLE_DEVICES"] = "-1"
+
+
 # ~~ Read in data and setup data structures ~~ #
 
 xlsx_file = "./data/Student Survey - Jan.xlsx"
@@ -31,18 +36,18 @@ model = GNNChain(
 	SAGEConv(input_dim => output_dim),
 	x -> relu.(x),
 	SAGEConv(output_dim => output_dim)
-)
-opt = Flux.Adam(1e-3)
-discriminator = Flux.Bilinear((output_dim, output_dim) => input_dim)
+) |> gpu
+
+opt = gpu(Flux.Adam(1e-3))
+discriminator = gpu(Flux.Bilinear((output_dim, output_dim) => input_dim))
 # learned embbeddings seems to perform better than topological features
 # but need to experiment with a hybrid approach
-node_embedding = Flux.Embedding(n_nodes, embedding_dim)
-ps = Flux.params(model, discriminator, node_embedding)
+node_embedding = gpu(Flux.Embedding(n_nodes, embedding_dim))
+ps = gpu(Flux.params(model, discriminator, node_embedding))
 
 
 # ~~ Train Model ~~ #
 # Should use DGI or some form of contrastive loss
-# Use CUDA to offload training to the GPU, more performant
 
 epochs = 300
 
@@ -70,7 +75,7 @@ end
 
 # ~~ Model Output & Aggregation ~~ #
 # This could technically end up as an algo as well
-output = sum(g.weight * model(g.graph, g.graph.ndata.x) for g in graph_views)
+output = cpu(sum(g.weight * model(g.graph, g.graph.ndata.x) for g in graph_views))
 
 
 
@@ -79,9 +84,9 @@ output = sum(g.weight * model(g.graph, g.graph.ndata.x) for g in graph_views)
 # E.g. k-means
 # (I don't think we're using kmeans but it's illustrative)
 #
-# using Clustering
-# k = 20
-# clusters = kmeans(output, k, maxiter=100)
+using Clustering
+k = 20
+clusters = kmeans(output, k, maxiter=100)
 
 
 # ~~ PSO ~~ #

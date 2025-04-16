@@ -22,15 +22,16 @@ module Loss
 		# we treat the graph and negative graph as a binary classification
 		# problem
 		# so, we create our own labels :)
+		# theoretically for negative graphs, we are making people without ties closer
+		# than those with ties, so we invert the labels
 		labels =
 			sign(g.weight) == 1 ?
-			vcat(ones(Float32, size(pos_scores)), zeros(Float32, size(neg_scores))) :
-			# theoretically for negative graphs, we are making people without ties closer
-			# than those with ties, so we invert the labels
-			vcat(zeros(Float32, size(pos_scores)), ones(Float32, size(neg_scores)))
+			gpu(vcat(ones(Float32, size(pos_scores)), zeros(Float32, size(neg_scores)))) :
+			gpu(vcat(zeros(Float32, size(pos_scores)), ones(Float32, size(neg_scores))))
 
 		scores = vcat(pos_scores, neg_scores)
-		return Flux.logitbinarycrossentropy(scores, labels)
+    	return Flux.logitbinarycrossentropy(scores, labels)
+
 	end
 
 end
