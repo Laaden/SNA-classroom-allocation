@@ -25,7 +25,7 @@ module Loss
 		# theoretically for negative graphs, we are making people without ties closer
 		# than those with ties, so we invert the labels
 		labels =
-			sign(g.weight) == 1 ?
+			sign(g.weight[1]) == 1 ?
 			gpu(vcat(ones(Float32, size(pos_scores)), zeros(Float32, size(neg_scores)))) :
 			gpu(vcat(zeros(Float32, size(pos_scores)), ones(Float32, size(neg_scores))))
 

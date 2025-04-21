@@ -1,26 +1,29 @@
-include.(["./src/data_loader.jl", "./src/types.jl", "./src/loss.jl"])
+ENV["CUDA_VISIBLE_DEVICES"] = "1"
+
+include.(["./src/data_loader.jl", "./src/types.jl", "./src/loss.jl", "./src/model_evaluation.jl"])
 
 using Statistics, Graphs, Flux, GraphNeuralNetworks, Random, Zygote, DataFrames, CUDA
-using .DataLoader, .Types, .Loss
+using .DataLoader, .Types, .Loss, .ModelEvaluation
 
 # Use CUDA to offload training to the GPU, more performant
 # uncomment to use cpu instead
-# ENV["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
 # ~~ Read in data and setup data structures ~~ #
 
 xlsx_file = "./data/Student Survey - Jan.xlsx"
 
-friend_adj_mtx, disrespect_adj_mtx, influential_adj_mtx = create_adjacency_matrix(
+friend_adj_mtx, moretime_adj_mtx, disrespect_adj_mtx, influential_adj_mtx = create_adjacency_matrix(
     matrix_from_sheet(xlsx_file, "net_0_Friends"),
+    matrix_from_sheet(xlsx_file, "net_3_MoreTime"),
+    matrix_from_sheet(xlsx_file, "net_1_Influential"),
     matrix_from_sheet(xlsx_file, "net_5_Disrespect"),
-    matrix_from_sheet(xlsx_file, "net_1_Influential")
 )
 
 graph_views = [
-    WeightedGraph(friend_adj_mtx, 1),
-    WeightedGraph(disrespect_adj_mtx, -2),
+    WeightedGraph(friend_adj_mtx, 0.5),
+    WeightedGraph(moretime_adj_mtx, 1),
+    WeightedGraph(disrespect_adj_mtx, -1),
     WeightedGraph(influential_adj_mtx, 0.8)
 ]
 
@@ -56,7 +59,7 @@ for epoch in 1:epochs
 	grads = Flux.gradient(ps) do
 		loss_epoch = 0.0f0
 		for g in graph_views
-			loss_epoch += contrastive_loss(
+            loss_epoch += contrastive_loss(
 				node_embedding,
 				model,
 				discriminator,
@@ -75,19 +78,36 @@ end
 
 # ~~ Model Output & Aggregation ~~ #
 # This could technically end up as an algo as well
-output = cpu(sum(g.weight * model(g.graph, g.graph.ndata.x) for g in graph_views))
+output = cpu(sum(abs(g.weight[1]) * model(g.graph, g.graph.ndata.x) for g in graph_views))
 
 
+# # ~~ Pass this off to community detection ~~ #
 
-# ~~ Pass this off to community detection ~~ #
-
-# E.g. k-means
-# (I don't think we're using kmeans but it's illustrative)
-#
-using Clustering
-k = 20
-clusters = kmeans(output, k, maxiter=100)
+# # E.g. k-means
+# # (I don't think we're using kmeans but it's illustrative)
+# #
+# using Clustering
+# k = Int64(round(sqrt(size(output, 2))))
+# clusters = kmeans(normalize(output), k, maxiter=100)
 
 
-# ~~ PSO ~~ #
-# do some PSO stuff at some point for class size & other node features
+# # ~~ PSO ~~ #
+# # do some PSO stuff at some point for class size & other node features
+
+
+# using Leiden
+
+# composite_graph = reduce(
+# 	(graph, edge) -> add_edges(graph, edge), [edge_index(g.graph) for g in graph_views],
+# 	init=GNNGraph()
+# )
+# output_knn = knn_graph(
+#     normalize(output),
+#     # have to figure out a reasonable number
+#     Int64(round(log(size(output, 2))))
+# )
+
+# leid = leiden(adjacency_matrix(output_knn), "ngrb")
+
+# ModelEvaluation.evaluate_output(composite_graph, normalize(output), clusters.assignments)
+# ModelEvaluation.evaluate_output(composite_graph, normalize(output), leid, Euclidean())

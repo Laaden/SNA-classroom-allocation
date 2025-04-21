@@ -4,7 +4,7 @@ module Types
     export WeightedGraph
     struct WeightedGraph
         graph::GNNGraph
-        weight::Real
+        weight::Array{Real}
         function WeightedGraph(adjacency_matrix::Matrix{Int64}, weight::Real)
             g = GNNGraph(adjacency_matrix) |> gpu
             # need to figure out which node features are the most helpful
@@ -23,7 +23,7 @@ module Types
             #     local_clustering_coefficient(g)',
             #     # pagerank(g)'
             # )
-            return new(g, weight)
+            return new(g, [weight])
         end
     end
 end
