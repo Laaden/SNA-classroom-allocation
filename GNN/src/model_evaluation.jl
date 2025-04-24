@@ -1,6 +1,6 @@
 
 module ModelEvaluation
-    using Statistics, Graphs, GNNGraphs, Clustering, Distances
+    using Statistics, Graphs, GNNGraphs, Clustering, Distances, Leiden, LinearAlgebra
 
     function cluster_conductance(graph::GNNGraph, labels::Vector{Int}, k::Int)
         nodes = findall(node -> node == k, labels) |>
@@ -54,4 +54,12 @@ module ModelEvaluation
         )
         return metrics
     end
+
+    export evaluate_embeddings
+    function evaluate_embeddings(embeddings, graph; k=10)
+        knn = knn_graph(normalize(embeddings), k)
+        clusters = leiden(adjacency_matrix(knn), "ngrb")
+        return embedding_metrics(graph, normalize(embeddings), clusters)
+    end
+
 end
