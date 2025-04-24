@@ -40,7 +40,7 @@ module ModelTraining
 
             Flux.Optimise.update!(opt, ps, grads)
 
-            if epochs % 10 == 0 && verbose == true
+            if epoch % 10 == 0 && verbose == true
                 contrast = loss_epoch - λ * mod_epoch
                 @info "Epoch $(epoch) | Total Loss=$(round(loss_epoch, digits = 3)) " *
                   "| Contrast =$(round(contrast, digits = 3)) " *
@@ -48,8 +48,8 @@ module ModelTraining
                   "| Accuracy =$(round(acc_epoch/length(views), digits = 3))"
             end
 
-            if epoch == epochs
-                output = cpu(sum(abs(g.weight[1]) * model(g.graph, g.graph.ndata.x) for g in views))
+            if epoch % 10 == 0
+                output = cpu(sum(g.weight[1] * model(g.graph, g.graph.ndata.x) for g in views))
                 metrics = evaluate_embeddings(output, cpu(graph))
                 push!(loss_log, loss_epoch)
                 push!(acc_log, acc_epoch / length(views))
@@ -72,8 +72,11 @@ module ModelTraining
     export hyperparameter_search
     function hyperparameter_search(base_model, base_proj, base_disc, base_embed, views, graph; lambdas, taus, epochs)
         results = []
-        for λ in lambdas, τ in taus
-            @info "λ $(λ), τ $(τ)"
+        configs = collect(Iterators.product(lambdas, taus))
+
+        for  (i, (λ, τ)) in enumerate(configs)
+            @info "Running config $i of $(length(configs)) | λ=$λ, τ=$τ"
+
             model = gpu(deepcopy(base_model))
             proj = gpu(deepcopy(base_proj))
             disc = gpu(deepcopy(base_disc))
@@ -82,6 +85,11 @@ module ModelTraining
             ps = Flux.params(model, proj, disc, embed)
             result = train_model(model, proj, opt, disc, embed, ps, views, graph; λ=λ, τ=τ, epochs = epochs)
             push!(results, result)
+        end
+
+        for (i, r) in enumerate(results)
+            best_mod = maximum(r[:modularity])
+            @info "Run $i | λ=$(r[:λ]), τ=$(r[:τ]) → max modularity = $(round(best_mod, digits=4))"
         end
 
         return results

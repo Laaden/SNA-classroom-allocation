@@ -75,9 +75,9 @@ results = hyperparameter_search(
     node_embedding,
     graph_views,
     composite_graph,
-    taus = [0.2, 0.3, 0.4],
-    lambdas = [1.5, 3.0, 6.0],
-    epochs = 50
+    taus = [0.2, 0.3, 0.4, 0.5],
+    lambdas = [1.5, 3.0, 6.0, 10],
+    epochs = 300
 )
 
 best_parameters = argmax(r -> maximum(r[:modularity]), results)
@@ -94,13 +94,14 @@ trained_model = train_model(
     λ=best_parameters[:λ],
     τ=best_parameters[:τ],
     verbose = true
-)[:model]
+)
 
 # ~~ Model Output & Aggregation ~~ #
 # This could technically end up as an algo as well
 # we grab abs weight because polarity is baked into the
 # loss function
-output = cpu(sum(abs(g.weight[1]) * trained_model(g.graph, g.graph.ndata.x) for g in graph_views))
+
+output = cpu(sum((g.weight[1]) * trained_model[:model](g.graph, g.graph.ndata.x) for g in graph_views))
 
 
 # # ~~ Pass this off to community detection ~~ #
@@ -115,3 +116,4 @@ output = cpu(sum(abs(g.weight[1]) * trained_model(g.graph, g.graph.ndata.x) for 
 
 # # ~~ PSO ~~ #
 # # do some PSO stuff at some point for class size & other node features
+

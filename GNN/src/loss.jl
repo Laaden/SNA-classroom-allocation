@@ -35,7 +35,7 @@ module Loss
 
 		probs = sigmoid.(scores)
 		preds = probs .> 0.5
-  		acc = mean(preds .== labels)
+  		acc = mean(preds .== Bool.(labels))
 
     	return Flux.logitbinarycrossentropy(scores, labels), acc
 
@@ -46,12 +46,12 @@ module Loss
 	#  by Ivan Lobov, Sergey Ivanov
 	# https://github.com/Ivanopolo/modnet
 	# It *is* differentiable
-    #
-	#
+    # The algorithm is modified slightly because we are using polarity to
+	# decrease modularity in the case of repulsive
 	export soft_modularity_loss
 	function soft_modularity_loss(model, g, x)
 		g.graph.ndata.x = x
-        A = Float32.(adjacency_matrix(g.graph))
+        A = sign(g.weight[1]) * Float32.(adjacency_matrix(g.graph))
 		h = Flux.softmax(model(g.graph, x); dims = 1)
 
 		indegs = Float32.(degree(g.graph, dir=:in))
