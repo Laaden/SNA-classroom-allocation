@@ -1,7 +1,7 @@
 module ModelTraining
     include("loss.jl")
     include("model_evaluation.jl")
-    using GraphNeuralNetworks, Graphs, Flux, CUDA, Statistics, Zygote
+    using GraphNeuralNetworks, Graphs, Flux, CUDA, Statistics, Zygote, Random
     using .Loss, .ModelEvaluation
 
     export train_model
@@ -80,6 +80,8 @@ module ModelTraining
             @info "Running config $i of $(length(configs)) | λ=$λ, τ=$τ"
             config_results = []
             for n in 1:n_repeats
+                Random.seed!(1000 * i + n)
+
                 model = gpu(deepcopy(base_model))
                 proj = gpu(deepcopy(base_proj))
                 disc = gpu(deepcopy(base_disc))

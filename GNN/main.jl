@@ -67,7 +67,7 @@ discriminator = Flux.Bilinear((output_dim, output_dim) => 1) |> gpu
 # learned embbeddings seems to perform better than topological features
 # but need to experiment with a hybrid approach
 node_embedding = Flux.Embedding(n_nodes, embedding_dim) |> gpu
-ps = Flux.params(model, discriminator, node_embedding)
+ps = Flux.params(model, discriminator, proj_head, node_embedding)
 
 
 # ~~ Train Model ~~ #
@@ -100,13 +100,12 @@ trained_model = train_model(
     composite_graph;
     λ=best_parameters[:λ],
     τ=best_parameters[:τ],
-    verbose = true
+    verbose = true,
+    epochs = 500
 )
 
 # ~~ Model Output & Aggregation ~~ #
 # This could technically end up as an algo as well
-# we grab abs weight because polarity is baked into the
-# loss function
 
 output = cpu(sum((g.weight[1]) * trained_model[:model](g.graph, g.graph.ndata.x) for g in graph_views))
 
@@ -119,7 +118,3 @@ output = cpu(sum((g.weight[1]) * trained_model[:model](g.graph, g.graph.ndata.x)
 # using Clustering
 # k = Int64(round(sqrt(size(output, 2))))
 # clusters = kmeans(normalize(output), k, maxiter=100)
-
-
-# # ~~ PSO ~~ #
-# # do some PSO stuff at some point for class size & other node features
