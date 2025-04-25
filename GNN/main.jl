@@ -79,9 +79,9 @@ results = hyperparameter_search(
     node_embedding,
     graph_views,
     composite_graph,
-    taus    = [0.1, 0.3, 0.4],
-    lambdas = [0.5, 3.0, 6.0],
-    epochs = 300,
+    taus    = [0.3, 0.4, 1],
+    lambdas = [3.0, 6.0, 10],
+    epochs = 500,
     n_repeats = 3
 )
 
@@ -123,50 +123,3 @@ output = cpu(sum((g.weight[1]) * trained_model[:model](g.graph, g.graph.ndata.x)
 
 # # ~~ PSO ~~ #
 # # do some PSO stuff at some point for class size & other node features
-
-
-using Clustering
-using GraphPlot, Graphs, Colors
-k = Int64(round(sqrt(size(output, 2))))
-clusters = kmeans(normalize(output), k, maxiter=100)
-
-palette = distinguishable_colors(length(unique(clusters.assignments)))
-group_colors = palette[clusters.assignments]
-
-gplot(composite_graph; nodefillc = group_colors)
-
-
-using Plots
-mod_search = best_parameters[:modularity]
-
-acc = best_parameters[:acc]
-loss = best_parameters[:loss]
-epochs = collect(1:length(mod_search)) .* 10
-plot(
-    epochs,
-    [mod_search, acc, log10.(loss)],
-    label=["Modularity" "Disc. Accuracy" "log10(Loss)"],
-    lw = 3
-)
-xlabel!("Epoch")
-ylabel!("Metric")
-title!("GNN Metrics over Epoch")
-plot!(legend=:outerbottom, legendcolumns=3, lw=10)
-
-
-
-mod_train = trained_model[:modularity]
-plot(
-    epochs,
-    [mod_search, mod_train],
-    label=["Search Modularity" "Train Modularity"],
-    lw = 3
-)
-xlabel!("Epoch")
-ylabel!("Metric")
-title!("Modularity over Epoch")
-plot!(legend=:outerbottom, legendcolumns=3, lw=10)
-best_epoch_search = epochs[argmax(mod_search)]
-best_epoch_train = epochs[argmax(mod_train)]
-vline!([best_epoch_search], label=false, color=:blue, linestyle=:dash)
-vline!([best_epoch_train], label=false, color=:orange, linestyle=:dash)

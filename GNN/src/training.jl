@@ -12,15 +12,17 @@ module ModelTraining
         mod_log = []
         sil_log = []
 
+        n = first(views).graph |>
+            nv
 
         for epoch in 1:epochs
+            x = node_embedding(1:n)
             loss_epoch = 0.0f0
             acc_epoch = 0.0f0
             mod_epoch = 0.0f0
 
             grads = Flux.gradient(ps) do
                 for g in views
-                    x = node_embedding(1:nv(g.graph))
                     loss, acc = contrastive_loss(
                         x,
                         model,

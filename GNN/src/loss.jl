@@ -53,7 +53,7 @@ module Loss
 	export soft_modularity_loss
 	function soft_modularity_loss(model::Any, g::Any, x::AbstractMatrix{<:Real})
 		g.graph.ndata.x = x
-        A = sign(g.weight[1]) * Float32.(adjacency_matrix(g.graph))
+        A = sign(g.weight[1]) * Float32.(g.adjacency_matrix)
 		h = Flux.softmax(model(g.graph, x); dims = 1)
 
 		indegs = Float32.(degree(g.graph, dir=:in))
