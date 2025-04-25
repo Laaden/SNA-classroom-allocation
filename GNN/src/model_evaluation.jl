@@ -42,8 +42,8 @@ module ModelEvaluation
     export embedding_metrics
     function embedding_metrics(
         graph::GNNGraph,
-        embeddings::Matrix{Float64},
-        labels::Vector{Int64},
+        embeddings::Matrix{<:Real},
+        labels::Vector{<:Real},
         metric::AcceptedMetrics = SqEuclidean()
     )
         dist_mtx = pairwise(metric, embeddings, embeddings)
@@ -57,9 +57,10 @@ module ModelEvaluation
 
     export evaluate_embeddings
     function evaluate_embeddings(embeddings, graph; k=10)
-        knn = knn_graph(normalize(embeddings), k)
+        norm_embeddings = normalize(embeddings)
+        knn = knn_graph(norm_embeddings, k)
         clusters = leiden(adjacency_matrix(knn), "ngrb")
-        return embedding_metrics(graph, normalize(embeddings), clusters)
+        return embedding_metrics(graph, norm_embeddings, clusters)
     end
 
 end

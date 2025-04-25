@@ -4,9 +4,10 @@ module Types
     export WeightedGraph
     struct WeightedGraph
         graph::GNNGraph
-        weight::Array{Real}
+        weight::AbstractVector{<:Real}
         function WeightedGraph(adjacency_matrix::Matrix{Int64}, weight::Real)
             g = GNNGraph(adjacency_matrix) |> gpu
+            @assert length(weight) == 1 "Weight vector must have length 1"
             # need to figure out which node features are the most helpful
             # degree and local_clustering seem to be important
             # relying on topological node features because using demographic or

@@ -70,21 +70,25 @@ module ModelTraining
     end
 
     export hyperparameter_search
-    function hyperparameter_search(base_model, base_proj, base_disc, base_embed, views, graph; lambdas, taus, epochs)
+    function hyperparameter_search(base_model, base_proj, base_disc, base_embed, views, graph; lambdas, taus, epochs, n_repeats)
         results = []
         configs = collect(Iterators.product(lambdas, taus))
 
         for  (i, (λ, τ)) in enumerate(configs)
             @info "Running config $i of $(length(configs)) | λ=$λ, τ=$τ"
-
-            model = gpu(deepcopy(base_model))
-            proj = gpu(deepcopy(base_proj))
-            disc = gpu(deepcopy(base_disc))
-            embed = gpu(deepcopy(base_embed))
-            opt = gpu(Flux.Adam(1e-3))
-            ps = Flux.params(model, proj, disc, embed)
-            result = train_model(model, proj, opt, disc, embed, ps, views, graph; λ=λ, τ=τ, epochs = epochs)
-            push!(results, result)
+            config_results = []
+            for n in 1:n_repeats
+                model = gpu(deepcopy(base_model))
+                proj = gpu(deepcopy(base_proj))
+                disc = gpu(deepcopy(base_disc))
+                embed = gpu(deepcopy(base_embed))
+                opt = gpu(Flux.Adam(1e-3))
+                ps = Flux.params(model, proj, disc, embed)
+                result = train_model(model, proj, opt, disc, embed, ps, views, graph; λ=λ, τ=τ, epochs = epochs)
+                push!(config_results, result)
+            end
+            best = argmax(r -> maximum(r[:modularity]), config_results)
+            push!(results, best)
         end
 
         for (i, r) in enumerate(results)

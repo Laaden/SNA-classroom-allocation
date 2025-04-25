@@ -2,9 +2,7 @@
 
 Entry is the main.jl file. Will precompile this at some point!
 
-## Loss
-
-Loss is currently ~= 0.8-0.7. Still need to assess downstream performance.
+Modularity is currently the target metric for GNN training. We have seen modularity between 0.05 to 0.3 depending on the run of the GNN. Once everything is tightened up, we will make the training more deterministic.
 
 ## Output
 

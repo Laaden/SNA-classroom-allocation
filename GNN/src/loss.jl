@@ -1,9 +1,11 @@
 module Loss
+	include("types.jl")
+	using .Types
 	using Flux, Graphs, Random, Statistics, Zygote, Leiden, Clustering, LinearAlgebra
 
 	Zygote.@nograd shuffle
 	export contrastive_loss
-	function contrastive_loss(x, model, discriminator, proj_head, τ, g)
+	function contrastive_loss(x::AbstractMatrix{<:Real}, model::Any, discriminator::Any, proj_head::Any, τ::Real, g::Any)
 
 		# doing some DBI style contrastive loss here
 		g.graph.ndata.x = x
@@ -49,7 +51,7 @@ module Loss
     # The algorithm is modified slightly because we are using polarity to
 	# decrease modularity in the case of repulsive
 	export soft_modularity_loss
-	function soft_modularity_loss(model, g, x)
+	function soft_modularity_loss(model::Any, g::Any, x::AbstractMatrix{<:Real})
 		g.graph.ndata.x = x
         A = sign(g.weight[1]) * Float32.(adjacency_matrix(g.graph))
 		h = Flux.softmax(model(g.graph, x); dims = 1)
