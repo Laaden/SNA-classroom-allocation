@@ -63,4 +63,51 @@ module ModelEvaluation
         return embedding_metrics(graph, norm_embeddings, clusters)
     end
 
+
+    export intra_cluster_rate
+    function intra_cluster_rate(assignments::Vector{<:Real}, graph)
+        pos_intra = 0
+        pos_total = 0
+        neg_intra = 0
+        neg_total = 0
+        edge_weights = get_edge_weight(graph)
+
+            for (i, e) in enumerate(edges(graph))
+                source, target = src(e), dst(e)
+                weight = edge_weights[i]
+
+                if weight > 0
+                    pos_total += 1
+                    if assignments[source] == assignments[target]
+                        pos_intra += 1
+                    end
+                elseif weight < 0
+                    neg_total += 1
+                    if assignments[source] == assignments[target]
+                        neg_intra += 1
+                    end
+                end
+            end
+
+            if (neg_total > 0)
+                return Dict(
+                    :positive_intra => pos_intra / max(pos_total, 1),
+                    :negative_intra => neg_intra / max(neg_total, 1)
+                )
+            else
+                return Dict(
+                    :intra => pos_intra / max(pos_total, 1)
+                )
+            end
+    end
+
+    function intra_cluster_rate(assignments::Vector{<:Real}, views::Array, names::Vector{String})
+        if names == Nothing
+            return [intra_cluster_rate(assignments, v.graph) for v in views]
+        else
+             return Dict(name => intra_cluster_rate(assignments, v.graph) for (v, name) in zip(views, names))
+        end
+    end
 end
+
+

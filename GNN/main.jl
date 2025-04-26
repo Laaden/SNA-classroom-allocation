@@ -79,8 +79,8 @@ results = hyperparameter_search(
     node_embedding,
     graph_views,
     composite_graph,
-    taus    = [0.3, 0.4, 1],
-    lambdas = [3.0, 6.0, 10],
+    taus    = [0.1, 0.5, 1],
+    lambdas = [0.3, 0.5, 6.0, 10],
     epochs = 500,
     n_repeats = 3
 )
@@ -115,6 +115,59 @@ output = cpu(sum((g.weight[1]) * trained_model[:model](g.graph, g.graph.ndata.x)
 # # E.g. k-means
 # # (I don't think we're using kmeans but it's illustrative)
 # #
-# using Clustering
-# k = Int64(round(sqrt(size(output, 2))))
-# clusters = kmeans(normalize(output), k, maxiter=100)
+using Clustering
+k = Int64(round(sqrt(size(output, 2))))
+clusters = kmeans(normalize(output), k, maxiter=100)
+intraview_cluster_rates = intra_cluster_rate(
+    clusters.assignments,
+    graph_views,
+    ["friendship", "influence", "feedback", "more_time", "advice", "disrespect", "affiliation"]
+)
+composite_cluster_rates = intra_cluster_rate(
+    clusters.assignments,
+    composite_graph
+)
+
+
+
+# # ~~ PSO ~~ #
+# # do some PSO stuff at some point for class size & other node features
+
+
+
+# using Plots
+# mod_search = best_parameters[:modularity]
+
+# acc = best_parameters[:acc]
+# loss = best_parameters[:loss]
+# epochs = collect(1:length(mod_search)) .* 10
+# plot(
+#     epochs,
+#     [mod_search, acc, loss ./ 100],
+#     label=["Modularity" "Disc. Accuracy" "Loss / 100"],
+#     lw = 3
+# )
+# xlabel!("Epoch")
+# ylabel!("Metric")
+# title!("GNN Metrics over Epoch")
+# plot!(legend=:outerbottom, legendcolumns=3, lw=10)
+# xticks!(0:100:500)
+# yticks!(0:0.1:0.8)
+
+
+# mod_train = trained_model[:modularity]
+# plot(
+#     epochs,
+#     [mod_search, mod_train],
+#     label=["Search Modularity" "Train Modularity"],
+#     lw = 3
+# )
+# xlabel!("Epoch")
+# ylabel!("Metric")
+# title!("Modularity over Epoch")
+# plot!(legend=:outerbottom, legendcolumns=3, lw=10)
+# best_epoch_search = epochs[argmax(mod_search)]
+# best_epoch_train = epochs[argmax(mod_train)]
+# vline!([best_epoch_search], label=false, color=:blue, linestyle=:dash)
+# vline!([best_epoch_train], label=false, color=:orange, linestyle=:dash)
+

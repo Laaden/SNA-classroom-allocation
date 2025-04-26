@@ -4,6 +4,22 @@ module ModelTraining
     using GraphNeuralNetworks, Graphs, Flux, CUDA, Statistics, Zygote, Random
     using .Loss, .ModelEvaluation
 
+    # This GNN uses a multi-view representational learning approach,
+    # wherein discrete views are passed through the same
+    # gradient tape. We use a multi-objective approach for the training:
+    #   1. Modified DGI contrastive loss
+    #       - Repulsive graphs are treated as negative signals
+    #   2. Modified Soft modularity optimisation
+    #       - Repulsive graphs reduce soft modularity, encouraging
+    #         negative views to be pushed into different clusters
+    #
+    # Weights are intentionally not applied to the training outputs. This
+    # is for a few reasons
+    #   1. Opted  to use GraphSage, which doesn't natively use edge weights.
+    #      Technically there are workarounds, but:
+    #   2. Real-time weight modification at inference was a hard requirement.
+    # Weights *are* technically used in the training, for their polarity only.
+    # The magnitude however, is left to post-hoc weighted embedding aggregation.
     export train_model
     function train_model(model, projection_head, opt, discriminator, node_embedding, ps, views, graph; λ, τ, epochs = 300, verbose = false)
         # Tracking
@@ -46,7 +62,7 @@ module ModelTraining
                 contrast = loss_epoch - λ * mod_epoch
                 @info "Epoch $(epoch) | Total Loss=$(round(loss_epoch, digits = 3)) " *
                   "| Contrast =$(round(contrast, digits = 3)) " *
-                  "| Mod Loss =$(round(mod_epoch, digits = 4)) " *
+                  "| Mod Loss =$(round(mod_epoch, digits = 3)) " *
                   "| Accuracy =$(round(acc_epoch/length(views), digits = 3))"
             end
 
@@ -97,7 +113,7 @@ module ModelTraining
 
         for (i, r) in enumerate(results)
             best_mod = maximum(r[:modularity])
-            @info "Run $i | λ=$(r[:λ]), τ=$(r[:τ]) → max modularity = $(round(best_mod, digits=4))"
+            @info "Run $i | λ=$(r[:λ]), τ=$(r[:τ]) → max modularity = $(round(best_mod, digits=3))"
         end
 
         return results
