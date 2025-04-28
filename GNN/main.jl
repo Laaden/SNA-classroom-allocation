@@ -89,6 +89,15 @@ results = hyperparameter_search(
 # modularity is our best metric for optimising the GNN
 best_parameters = argmax(r -> maximum(r.logs.modularity), results)
 
+best_parameters2 = argmax(r -> begin
+    m = maximum(r.logs.modularity)
+    s = maximum(r.logs.silhouette)
+    l = minimum(r.logs.loss)
+    return (m + s + -l) / 3
+    end,
+    results
+)
+
 trained_model = train_model(
     model,
     proj_head,
@@ -133,48 +142,53 @@ composite_cluster_rates = intra_cluster_rate(
 # # do some PSO stuff at some point for class size & other node features
 
 
-# using Plots
-# mod_search = best_parameters.logs.modularity
-# silh = best_parameters.logs.silhouette
-# acc = best_parameters.logs.accuracy
-# loss = best_parameters.logs.loss
-
-# epochs = collect(1:length(loss))
-# plot(
-#     epochs,
-#     [
-#         repeat(mod_search, inner = 10),
-#         acc,
-#         loss ./ 100,
-#         repeat(silh, inner = 10)
-#     ],
-#     label=["Modularity" "Disc. Accuracy" "Loss / 100" "Silhouette"],
-#     lw = 3
-# )
-# xlabel!("Epoch")
-# ylabel!("Metric")
-# title!("GNN Metrics over Epoch")
-# plot!(legend=:outerbottom, legendcolumns=3, lw=10)
-# yticks!(0:0.1:0.8)
 
 
-# mod_train = trained_model.logs.modularity
-# epochs = collect(1:length(mod_search)) .* 10
-# plot(
-#     epochs,
-#     [mod_search, mod_train],
-#     label=[
-#         "Hyperparameter Modularity"
-#         "Train Modularity"
-#     ],
-#     lw = 3
-# )
-# xlabel!("Epoch")
-# ylabel!("Metric")
-# title!("Modularity over Epoch")
-# plot!(legend=:outerbottom, legendcolumns=3, lw=10)
-# best_epoch_search = epochs[argmax(mod_search)]
-# best_epoch_train = epochs[argmax(mod_train)]
-# vline!([best_epoch_search], label=false, color=:blue, linestyle=:dash)
-# vline!([best_epoch_train], label=false, color=:orange, linestyle=:dash)
+using Plots, GraphPlot
 
+mod_search = best_parameters.logs.modularity
+silh = best_parameters.logs.silhouette
+acc = best_parameters.logs.accuracy
+loss = best_parameters.logs.loss
+
+epochs = collect(1:length(loss))
+plot(
+    epochs,
+    [
+        repeat(mod_search, inner = 10),
+        acc,
+        loss ./ 100,
+        repeat(silh, inner = 10)
+    ],
+    label=["Modularity" "Disc. Accuracy" "Loss / 100" "Silhouette"],
+    lw = 3
+)
+xlabel!("Epoch")
+ylabel!("Metric")
+title!("GNN Metrics over Epoch")
+plot!(legend=:outerbottom, legendcolumns=3, lw=10)
+yticks!(0:0.1:0.8)
+
+
+mod_train = trained_model.logs.modularity
+epochs = collect(1:length(mod_search)) .* 10
+plot(
+    epochs,
+    [mod_search, mod_train],
+    label=["Hyperparameter Modularity" "Train Modularity"],
+    lw = 3
+)
+xlabel!("Epoch")
+ylabel!("Metric")
+title!("Modularity over Epoch")
+plot!(legend=:outerbottom, legendcolumns=3, lw=10)
+best_epoch_search = epochs[argmax(mod_search)]
+best_epoch_train = epochs[argmax(mod_train)]
+vline!([best_epoch_search], label=false, color=:blue, linestyle=:dash)
+vline!([best_epoch_train], label=false, color=:orange, linestyle=:dash)
+
+
+
+gplot(
+    composite_graph
+)

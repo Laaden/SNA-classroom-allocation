@@ -64,6 +64,7 @@ module Loss
 		B = A - expected
 
 		soft_mod = sum(diag(h * B * h'))
+		# todo, add a temperature value for further tuning
 		return -soft_mod / m
 	end
 
