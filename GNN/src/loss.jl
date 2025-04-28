@@ -7,7 +7,7 @@ module Loss
 	export contrastive_loss
 	function contrastive_loss(x::AbstractMatrix{<:Real}, model::Any, discriminator::Any, proj_head::Any, τ::Real, g::Any)
 
-		# doing some DBI style contrastive loss here
+		# doing some DBI contrastive loss here
 		g.graph.ndata.x = x
 		h = model(g.graph, x) |>
 			proj_head |>
@@ -29,7 +29,7 @@ module Loss
 		# problem, so we create our own labels.
 		# theoretically negative graphs are repulsive, so we invert the labels
 		labels =
-			sign(g.weight[1]) == 1 ?
+			sign(g.weight[]) == 1 ?
 			gpu(vcat(ones(Float32, size(pos_scores)), zeros(Float32, size(neg_scores)))) :
 			gpu(vcat(zeros(Float32, size(pos_scores)), ones(Float32, size(neg_scores))))
 
@@ -53,7 +53,7 @@ module Loss
 	export soft_modularity_loss
 	function soft_modularity_loss(model::Any, g::Any, x::AbstractMatrix{<:Real})
 		g.graph.ndata.x = x
-        A = sign(g.weight[1]) * Float32.(g.adjacency_matrix)
+        A = sign(g.weight[]) * Float32.(g.adjacency_matrix)
 		h = Flux.softmax(model(g.graph, x); dims = 1)
 
 		indegs = Float32.(degree(g.graph, dir=:in))
@@ -77,5 +77,38 @@ module Loss
 		return -modularity(cpu(g.graph), clusters.assignments)
 	end
 	Zygote.@nograd hard_modularity_loss
+
+
+	export calculate_total_loss
+	function calculate_total_loss(model, discriminator, projection_head, views, x, τ, λ)
+		total_contrastive_loss = 0f0
+		total_modularity_loss = 0f0
+		total_accuracy = 0f0
+
+		for g in views
+			contrast_loss, disc_acc = contrastive_loss(
+				x,
+				model,
+				discriminator,
+				projection_head,
+				τ,
+				g
+			)
+
+			total_contrastive_loss += contrast_loss
+			total_accuracy += disc_acc
+			if (λ != 0)
+				total_modularity_loss += soft_modularity_loss(model, g, x)
+			end
+		end
+
+    	total_loss = total_contrastive_loss + λ * total_modularity_loss
+
+		return (total_loss, Dict(
+			:contrast_loss => total_contrastive_loss,
+			:mod_loss => total_modularity_loss,
+			:acc => total_accuracy
+		))
+	end
 
 end

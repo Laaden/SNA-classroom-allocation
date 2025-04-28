@@ -4,10 +4,10 @@ module Types
     export WeightedGraph
     struct WeightedGraph
         graph::GNNGraph
-        weight::AbstractVector{<:Real}
+        weight::Ref{Float32}
         adjacency_matrix::AbstractMatrix{<:Real}
 
-        function WeightedGraph(adj_mat::Matrix{Int64}, weight::Real)
+        function WeightedGraph(adj_mat::Matrix{Int64}, weight::Float32)
             g = GNNGraph(adj_mat) |> gpu
             @assert length(weight) == 1 "Weight vector must have length 1"
 
@@ -29,7 +29,24 @@ module Types
             #     local_clustering_coefficient(g)',
             #     # pagerank(g)'
             # )
-            return new(g, [weight], mtx)
+            return new(g, Ref(weight), mtx)
         end
     end
+
+    export TrainLog
+    struct TrainLog
+        loss::Vector{Float32}
+        accuracy::Vector{Float32}
+        modularity::Vector{Float32}
+        silhouette::Vector{Float32}
+    end
+
+    export TrainResult
+    struct TrainResult{T}
+        model::T
+        λ::Float32
+        τ::Float32
+        logs::TrainLog
+    end
+
 end

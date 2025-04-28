@@ -23,20 +23,20 @@ fr_mat, inf_mat, fd_mat, mt_mat, ad_mat, ds_mat, sc_mat = create_adjacency_matri
 )
 
 graph_views = [
-    WeightedGraph(fr_mat, 0.4),
-    WeightedGraph(inf_mat, 0.6),
-    WeightedGraph(fd_mat, 0.8),
-    WeightedGraph(mt_mat, 1),
-    WeightedGraph(ad_mat, 0.9),
-    WeightedGraph(ds_mat, -0.5),
-    WeightedGraph(sc_mat, 0.1),
+    WeightedGraph(fr_mat, 0.4f0),
+    WeightedGraph(inf_mat, 0.6f0),
+    WeightedGraph(fd_mat, 0.8f0),
+    WeightedGraph(mt_mat, 1f0),
+    WeightedGraph(ad_mat, 0.9f0),
+    WeightedGraph(ds_mat, -0.5f0),
+    WeightedGraph(sc_mat, 0.1f0),
 ]
 
 composite_graph = reduce(
     (graph, (edge, weight)) -> add_edges(graph, (edge[1], edge[2], fill(weight, length(edge[1])))),
     zip(
         [edge_index(cpu(g.graph)) for g in graph_views],
-        [g.weight[1] for g in graph_views]
+        [g.weight[] for g in graph_views]
     ),
     init=GNNGraph()
 )
@@ -79,15 +79,15 @@ results = hyperparameter_search(
     node_embedding,
     graph_views,
     composite_graph,
-    taus    = [0.1, 0.5, 1],
-    lambdas = [0.3, 0.5, 6.0, 10],
+    taus    = [0.1f0, 0.5f0, 1f0],
+    lambdas = [0.3f0, 0.5f0, 6.0f0, 10f0],
     epochs = 500,
     n_repeats = 3
 )
 
 # given community detection is the goal,
 # modularity is our best metric for optimising the GNN
-best_parameters = argmax(r -> maximum(r[:modularity]), results)
+best_parameters = argmax(r -> maximum(r.logs.modularity), results)
 
 trained_model = train_model(
     model,
@@ -98,8 +98,8 @@ trained_model = train_model(
     ps,
     graph_views,
     composite_graph;
-    λ=best_parameters[:λ],
-    τ=best_parameters[:τ],
+    λ=best_parameters.λ,
+    τ=best_parameters.τ,
     verbose = true,
     epochs = 500
 )
@@ -107,7 +107,7 @@ trained_model = train_model(
 # ~~ Model Output & Aggregation ~~ #
 # This could technically end up as an algo as well
 
-output = cpu(sum((g.weight[1]) * trained_model[:model](g.graph, g.graph.ndata.x) for g in graph_views))
+output = cpu(sum((g.weight[]) * trained_model.model(g.graph, g.graph.ndata.x) for g in graph_views))
 
 
 # # ~~ Pass this off to community detection ~~ #
@@ -129,37 +129,44 @@ composite_cluster_rates = intra_cluster_rate(
 )
 
 
-
 # # ~~ PSO ~~ #
 # # do some PSO stuff at some point for class size & other node features
 
 
-
 # using Plots
-# mod_search = best_parameters[:modularity]
+# mod_search = best_parameters.logs.modularity
+# silh = best_parameters.logs.silhouette
+# acc = best_parameters.logs.accuracy
+# loss = best_parameters.logs.loss
 
-# acc = best_parameters[:acc]
-# loss = best_parameters[:loss]
-# epochs = collect(1:length(mod_search)) .* 10
+# epochs = collect(1:length(loss))
 # plot(
 #     epochs,
-#     [mod_search, acc, loss ./ 100],
-#     label=["Modularity" "Disc. Accuracy" "Loss / 100"],
+#     [
+#         repeat(mod_search, inner = 10),
+#         acc,
+#         loss ./ 100,
+#         repeat(silh, inner = 10)
+#     ],
+#     label=["Modularity" "Disc. Accuracy" "Loss / 100" "Silhouette"],
 #     lw = 3
 # )
 # xlabel!("Epoch")
 # ylabel!("Metric")
 # title!("GNN Metrics over Epoch")
 # plot!(legend=:outerbottom, legendcolumns=3, lw=10)
-# xticks!(0:100:500)
 # yticks!(0:0.1:0.8)
 
 
-# mod_train = trained_model[:modularity]
+# mod_train = trained_model.logs.modularity
+# epochs = collect(1:length(mod_search)) .* 10
 # plot(
 #     epochs,
 #     [mod_search, mod_train],
-#     label=["Search Modularity" "Train Modularity"],
+#     label=[
+#         "Hyperparameter Modularity"
+#         "Train Modularity"
+#     ],
 #     lw = 3
 # )
 # xlabel!("Epoch")

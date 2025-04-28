@@ -1,13 +1,16 @@
 module ModelTraining
     include("loss.jl")
+    include("types.jl")
     include("model_evaluation.jl")
+
     using GraphNeuralNetworks, Graphs, Flux, CUDA, Statistics, Zygote, Random
-    using .Loss, .ModelEvaluation
+    using .Loss, .ModelEvaluation, .Types
 
     # This GNN uses a multi-view representational learning approach,
     # wherein discrete views are passed through the same
     # gradient tape. We use a multi-objective approach for the training:
     #   1. Modified DGI contrastive loss
+    #       - Bilinear discriminator with negative sampling
     #       - Repulsive graphs are treated as negative signals
     #   2. Modified Soft modularity optimisation
     #       - Repulsive graphs reduce soft modularity, encouraging
@@ -20,13 +23,20 @@ module ModelTraining
     #   2. Real-time weight modification at inference was a hard requirement.
     # Weights *are* technically used in the training, for their polarity only.
     # The magnitude however, is left to post-hoc weighted embedding aggregation.
+    #
+    # It also uses a projection head during the contrastive loss
+    # (inspired by SimCLR), which transforms embeddings into a separate space
+    # optimised for DGI contrastive learning.
     export train_model
-    function train_model(model, projection_head, opt, discriminator, node_embedding, ps, views, graph; λ, τ, epochs = 300, verbose = false)
-        # Tracking
-        loss_log = []
-        acc_log = []
-        mod_log = []
-        sil_log = []
+    function train_model(model, projection_head, opt, discriminator, node_embedding, ps, views, graph; λ, τ, epochs = 300, verbose = false)::TrainResult
+        # todo, early stopping
+
+        logs = TrainLog(
+            Float32[],
+            Float32[],
+            Float32[],
+            Float32[]
+        )
 
         n = first(views).graph |>
             nv
@@ -35,66 +45,65 @@ module ModelTraining
             x = node_embedding(1:n)
             loss_epoch = 0.0f0
             acc_epoch = 0.0f0
-            mod_epoch = 0.0f0
+            mod_loss_epoch = 0.0f0
+            contrast_epoch = 0.0f0
 
             grads = Flux.gradient(ps) do
-                for g in views
-                    loss, acc = contrastive_loss(
-                        x,
-                        model,
-                        discriminator,
-                        projection_head,
-                        τ,
-                        g
-                    )
-                    mod_loss = soft_modularity_loss(model, g, x)
-                    acc_epoch += acc
-                    mod_epoch += λ * mod_loss
-                    loss_epoch += loss + λ * mod_loss
-                end
+
+                total_loss, res = calculate_total_loss(
+                    model,
+                    discriminator,
+                    projection_head,
+                    views,
+                    x,
+                    τ,
+                    λ
+                )
+                loss_epoch = total_loss
+                mod_loss_epoch = res[:mod_loss]
+                acc_epoch = res[:acc]
+                contrast_epoch = res[:contrast_loss]
 
                 return loss_epoch
             end
 
             Flux.Optimise.update!(opt, ps, grads)
 
+
+            push!(logs.loss, loss_epoch)
+            push!(logs.accuracy, acc_epoch / length(views))
+
             if epoch % 10 == 0 && verbose == true
-                contrast = loss_epoch - λ * mod_epoch
                 @info "Epoch $(epoch) | Total Loss=$(round(loss_epoch, digits = 3)) " *
-                  "| Contrast =$(round(contrast, digits = 3)) " *
-                  "| Mod Loss =$(round(mod_epoch, digits = 3)) " *
+                  "| Contrast =$(round(contrast_epoch, digits = 3)) " *
+                  "| Mod Loss =$(round(mod_loss_epoch, digits = 3)) " *
                   "| Accuracy =$(round(acc_epoch/length(views), digits = 3))"
             end
 
             if epoch % 10 == 0
-                output = cpu(sum(g.weight[1] * model(g.graph, g.graph.ndata.x) for g in views))
+                output = cpu(sum(g.weight[] * model(g.graph, g.graph.ndata.x) for g in views))
                 metrics = evaluate_embeddings(output, cpu(graph))
-                push!(loss_log, loss_epoch)
-                push!(acc_log, acc_epoch / length(views))
-                push!(mod_log, metrics[:modularity])
-                push!(sil_log, metrics[:silhouettes])
+                push!(logs.modularity, metrics[:modularity])
+                push!(logs.silhouette, metrics[:silhouettes])
             end
         end
 
-        return Dict(
-            :model => model,
-            :λ => λ,
-            :τ => τ,
-            :loss => loss_log,
-            :acc => acc_log,
-            :modularity => mod_log,
-            :silhouette => sil_log
+        return TrainResult(
+            model,
+            λ,
+            τ,
+            logs
         )
     end
 
     export hyperparameter_search
-    function hyperparameter_search(base_model, base_proj, base_disc, base_embed, views, graph; lambdas, taus, epochs, n_repeats)
-        results = []
+    function hyperparameter_search(base_model, base_proj, base_disc, base_embed, views, graph; lambdas, taus, epochs, n_repeats)::Vector{TrainResult}
+        results::Vector{TrainResult} = TrainResult[]
         configs = collect(Iterators.product(lambdas, taus))
 
         for  (i, (λ, τ)) in enumerate(configs)
             @info "Running config $i of $(length(configs)) | λ=$λ, τ=$τ"
-            config_results = []
+            config_results::Vector{TrainResult} = TrainResult[]
             for n in 1:n_repeats
                 Random.seed!(1000 * i + n)
 
@@ -107,13 +116,13 @@ module ModelTraining
                 result = train_model(model, proj, opt, disc, embed, ps, views, graph; λ=λ, τ=τ, epochs = epochs)
                 push!(config_results, result)
             end
-            best = argmax(r -> maximum(r[:modularity]), config_results)
+            best = argmax(r -> maximum(r.logs.modularity), config_results)
             push!(results, best)
         end
 
         for (i, r) in enumerate(results)
-            best_mod = maximum(r[:modularity])
-            @info "Run $i | λ=$(r[:λ]), τ=$(r[:τ]) → max modularity = $(round(best_mod, digits=3))"
+            best_mod = maximum(r.logs.modularity)
+            @info "Run $i | λ=$(r.λ), τ=$(r.τ) → max modularity = $(round(best_mod, digits=3))"
         end
 
         return results
