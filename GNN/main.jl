@@ -28,7 +28,7 @@ graph_views = [
     WeightedGraph(fd_mat, 0.8f0),
     WeightedGraph(mt_mat, 1f0),
     WeightedGraph(ad_mat, 0.9f0),
-    WeightedGraph(ds_mat, -0.5f0),
+    WeightedGraph(ds_mat, -1.0f0),
     WeightedGraph(sc_mat, 0.1f0),
 ]
 
@@ -81,8 +81,8 @@ results = hyperparameter_search(
     composite_graph,
     taus    = [0.1f0, 0.5f0, 1f0],
     lambdas = [0.3f0, 0.5f0, 6.0f0, 10f0],
-    epochs = 500,
-    n_repeats = 3
+    epochs = 300,
+    n_repeats = 1
 )
 
 # given community detection is the goal,
@@ -91,7 +91,7 @@ best_parameters = argmax(r -> maximum(r.logs.modularity), results)
 
 best_parameters2 = argmax(r -> begin
     m = maximum(r.logs.modularity)
-    s = maximum(r.logs.silhouette)
+    s = 0 # maximum(r.logs.silhouette)
     l = minimum(r.logs.loss)
     return (m + s + -l) / 3
     end,
@@ -116,8 +116,7 @@ trained_model = train_model(
 # ~~ Model Output & Aggregation ~~ #
 # This could technically end up as an algo as well
 
-output = cpu(sum((g.weight[]) * trained_model.model(g.graph, g.graph.ndata.x) for g in graph_views))
-
+output = forward_pass(trained_model.model, graph_views) |> cpu
 
 # # ~~ Pass this off to community detection ~~ #
 
@@ -126,10 +125,10 @@ output = cpu(sum((g.weight[]) * trained_model.model(g.graph, g.graph.ndata.x) fo
 # #
 using Clustering
 k = Int64(round(sqrt(size(output, 2))))
-clusters = kmeans(normalize(output), k, maxiter=100)
+clusters = kmeans(Flux.normalise(output), k, maxiter=100)
 intraview_cluster_rates = intra_cluster_rate(
     clusters.assignments,
-    graph_views,
+    (graph_views),
     ["friendship", "influence", "feedback", "more_time", "advice", "disrespect", "affiliation"]
 )
 composite_cluster_rates = intra_cluster_rate(
@@ -140,9 +139,6 @@ composite_cluster_rates = intra_cluster_rate(
 
 # # ~~ PSO ~~ #
 # # do some PSO stuff at some point for class size & other node features
-
-
-
 
 using Plots, GraphPlot
 
@@ -187,8 +183,73 @@ best_epoch_train = epochs[argmax(mod_train)]
 vline!([best_epoch_search], label=false, color=:blue, linestyle=:dash)
 vline!([best_epoch_train], label=false, color=:orange, linestyle=:dash)
 
+using Colors
 
+colours = distinguishable_colors(maximum(clusters.assignments))
+group_colors = colours[clusters.assignments]
 
 gplot(
-    composite_graph
+    composite_graph,
+    nodefillc = group_colors
 )
+
+
+using Plots
+plot()
+for r in results
+    plot!(
+        10:10:10*length(r.logs.modularity),
+        r.logs.modularity,
+        label=false,
+        lw = 3
+    )
+end
+xlabel!("Epoch")
+ylabel!("Modularity")
+title!("Modularity curves with early stopping")
+
+
+
+function moving_average(x, w=3)
+    return [mean(x[max(1, i - w + 1):i]) for i in 1:length(x)]
+end
+
+plot()
+for r in results
+    ma_curve = moving_average(r.logs.modularity)
+    plot!(10:10:10*length(ma_curve), ma_curve, label=false)
+end
+xlabel!("Epoch")
+ylabel!("Modularity")
+title!("Smoothed Modularity Curves with Early Stopping")
+
+
+colors = cgrad(:viridis, length(results))  # color gradient
+final_modularities = [r.logs.modularity[end] for r in results]
+sorted_indices = sortperm(final_modularities, rev=true)  # highest first
+nudge = [-0.0, 0.00, -0.02]
+
+plot()
+for (rank, idx) in enumerate(sorted_indices)
+    r = results[idx]
+    ma_curve = moving_average(r.logs.modularity)
+    x_vals = 10:10:10*length(ma_curve)
+    plot!(
+        10:10:10*length(ma_curve),
+         ma_curve,
+         color=colors[idx * 10],
+         alpha = 0.3 + 0.7 *  (idx - rank) / (idx - 1),
+         label=false,
+         lw = 3
+    )
+    if rank <= 3
+        annotate!(
+            x_vals[end] - 50,    # X position (slightly before final epoch)
+            ma_curve[end] + nudge[rank],       # Y position (final modularity value)
+            text("λ=$(r.λ), τ=$(r.τ)", :black, 8)  # Text label, color, size
+        )
+    end
+end
+xlabel!("Epoch")
+ylabel!("Modularity")
+title!("Modularity Colored by Final Performance")

@@ -1,14 +1,13 @@
 module Loss
 	include("types.jl")
 	using .Types
-	using Flux, Graphs, Random, Statistics, Zygote, Leiden, Clustering, LinearAlgebra
+	using GNNGraphs, Flux, Graphs, Random, Statistics, Zygote, Leiden, Clustering, LinearAlgebra
 
 	Zygote.@nograd shuffle
 	export contrastive_loss
-	function contrastive_loss(x::AbstractMatrix{<:Real}, model::Any, discriminator::Any, proj_head::Any, τ::Real, g::Any)
+function contrastive_loss(g, x::AbstractMatrix{Float32}, model::Any, discriminator::Any, proj_head::Any; τ::Float32=1f0)
 
 		# doing some DBI contrastive loss here
-		g.graph.ndata.x = x
 		h = model(g.graph, x) |>
 			proj_head |>
 			x -> Flux.normalise(x, dims = 1)
@@ -51,8 +50,7 @@ module Loss
     # The algorithm is modified slightly because we are using polarity to
 	# decrease modularity in the case of repulsive
 	export soft_modularity_loss
-	function soft_modularity_loss(model::Any, g::Any, x::AbstractMatrix{<:Real})
-		g.graph.ndata.x = x
+	function soft_modularity_loss(g, x::AbstractMatrix{Float32}, model::T; λ::Float32=1f0) where {T}
         A = sign(g.weight[]) * Float32.(g.adjacency_matrix)
 		h = Flux.softmax(model(g.graph, x); dims = 1)
 
@@ -65,7 +63,7 @@ module Loss
 
 		soft_mod = sum(diag(h * B * h'))
 		# todo, add a temperature value for further tuning
-		return -soft_mod / m
+		return λ * (-soft_mod / m)
 	end
 
 
@@ -81,29 +79,30 @@ module Loss
 
 
 	export calculate_total_loss
-	function calculate_total_loss(model, discriminator, projection_head, views, x, τ, λ)
+	function calculate_total_loss(model, discriminator, projection_head, views, x::AbstractMatrix{Float32}, τ::Float32, λ::Float32)
 		total_contrastive_loss = 0f0
 		total_modularity_loss = 0f0
 		total_accuracy = 0f0
 
 		for g in views
+			g.graph.ndata.x = x
 			contrast_loss, disc_acc = contrastive_loss(
+				g,
 				x,
 				model,
 				discriminator,
-				projection_head,
-				τ,
-				g
+				projection_head;
+				τ = τ
 			)
 
 			total_contrastive_loss += contrast_loss
 			total_accuracy += disc_acc
 			if (λ != 0)
-				total_modularity_loss += soft_modularity_loss(model, g, x)
+            	total_modularity_loss += soft_modularity_loss(g, x, model; λ=λ)
 			end
 		end
 
-    	total_loss = total_contrastive_loss + λ * total_modularity_loss
+    	total_loss = total_contrastive_loss + total_modularity_loss
 
 		return (total_loss, Dict(
 			:contrast_loss => total_contrastive_loss,

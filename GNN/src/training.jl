@@ -28,8 +28,9 @@ module ModelTraining
     # (inspired by SimCLR), which transforms embeddings into a separate space
     # optimised for DGI contrastive learning.
     export train_model
-    function train_model(model, projection_head, opt, discriminator, node_embedding, ps, views, graph; λ, τ, epochs = 300, verbose = false)::TrainResult
-        # todo, early stopping
+    function train_model(model, projection_head, opt, discriminator, node_embedding, ps, views, graph; λ::Float32, τ::Float32, epochs::Int64 = 300, verbose::Bool= false)::TrainResult
+        # todo, early stopping, patience or distance metric?
+        # look at Flux.early_stopping or Flux.patience
 
         logs = TrainLog(
             Float32[],
@@ -40,6 +41,16 @@ module ModelTraining
 
         n = first(views).graph |>
             nv
+
+        graph = cpu(graph)
+
+        # stop training early if modularity doesn't improve
+        es =  Flux.early_stopping(
+            () -> logs.modularity[end],
+            20;
+            distance = (a,b) -> b - a,
+            min_dist = 1e-4
+        )
 
         for epoch in 1:epochs
             x = node_embedding(1:n)
@@ -81,10 +92,12 @@ module ModelTraining
             end
 
             if epoch % 10 == 0
-                output = cpu(sum(g.weight[] * model(g.graph, g.graph.ndata.x) for g in views))
-                metrics = evaluate_embeddings(output, cpu(graph))
+                output = forward_pass(model, views)
+                metrics = fast_evaluate_embeddings(cpu(output), graph)
                 push!(logs.modularity, metrics[:modularity])
-                push!(logs.silhouette, metrics[:silhouettes])
+                # push!(logs.silhouette, metrics[:silhouettes])
+
+                es() && break
             end
         end
 
@@ -101,9 +114,11 @@ module ModelTraining
         results::Vector{TrainResult} = TrainResult[]
         configs = collect(Iterators.product(lambdas, taus))
 
+        # todo, see if this can be threaded or parallel-processed
+        # potentially difficult when working with GPUs
         for  (i, (λ, τ)) in enumerate(configs)
-            @info "Running config $i of $(length(configs)) | λ=$λ, τ=$τ"
             config_results::Vector{TrainResult} = TrainResult[]
+            @info "Running config $i of $(length(configs)) | λ = $λ, τ = $τ"
             for n in 1:n_repeats
                 Random.seed!(1000 * i + n)
 
@@ -113,7 +128,19 @@ module ModelTraining
                 embed = gpu(deepcopy(base_embed))
                 opt = gpu(Flux.Adam(1e-3))
                 ps = Flux.params(model, proj, disc, embed)
-                result = train_model(model, proj, opt, disc, embed, ps, views, graph; λ=λ, τ=τ, epochs = epochs)
+                @time result = train_model(
+                    model,
+                    proj,
+                    opt,
+                    disc,
+                    embed,
+                    ps,
+                    views,
+                    graph;
+                    λ=λ,
+                    τ=τ,
+                    epochs = epochs
+                )
                 push!(config_results, result)
             end
             best = argmax(r -> maximum(r.logs.modularity), config_results)
@@ -126,6 +153,12 @@ module ModelTraining
         end
 
         return results
+    end
+
+    # todo, give this a better name
+    export forward_pass
+    function forward_pass(model, views)
+        sum(g.weight[] * model(g.graph, g.graph.ndata.x) for g in views)
     end
 
 end
