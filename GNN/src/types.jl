@@ -49,4 +49,47 @@ module Types
         logs::TrainLog
     end
 
+
+    export MultiViewGNN
+    struct MultiViewGNN
+        layers::NamedTuple
+        # projection head taken from SimCLR,
+        # seems to help contrastive loss differentiate better
+        # it's only used during training, we don't apply it on the final foreward pass
+        projection_head::Chain
+        discriminator::Flux.Bilinear
+        # learned embbeddings seems to perform better than topological features
+        # but need to experiment with a hybrid approach
+        embedding::Flux.Embedding
+    end
+
+    Flux.@layer MultiViewGNN
+
+    function MultiViewGNN(input_dim, output_dim, n_nodes)
+        layers = (
+            conv1 = SAGEConv(input_dim => output_dim),
+            conv2 = SAGEConv(output_dim => output_dim)
+        )
+
+        proj_head = Chain(
+            Dense(output_dim, output_dim, relu),
+            Dense(output_dim, output_dim)
+        )
+
+        disc = Flux.Bilinear((output_dim, output_dim) => 1)
+        embed = Flux.Embedding(n_nodes, input_dim)
+
+        return MultiViewGNN(layers, proj_head, disc, embed)
+    end
+
+    function(mvgnn:: MultiViewGNN)(g::GNNGraph, x::AbstractMatrix)
+        h = mvgnn.layers.conv1(g, x)
+        h = mvgnn.layers.conv2(g, h)
+        return h
+    end
+
+    function(mvgnn::MultiViewGNN)(views)
+        sum(g.weight[] * mvgnn(g.graph, g.graph.ndata.x) for g in views)
+    end
+
 end

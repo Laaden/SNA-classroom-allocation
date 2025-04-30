@@ -1,10 +1,6 @@
 module ModelTraining
-    include("loss.jl")
-    include("types.jl")
-    include("model_evaluation.jl")
-
     using GraphNeuralNetworks, Graphs, Flux, CUDA, Statistics, Zygote, Random
-    using .Loss, .ModelEvaluation, .Types
+    using ..Loss, ..ModelEvaluation, ..Types
 
     # This GNN uses a multi-view representational learning approach,
     # wherein discrete views are passed through the same
@@ -28,9 +24,10 @@ module ModelTraining
     # (inspired by SimCLR), which transforms embeddings into a separate space
     # optimised for DGI contrastive learning.
     export train_model
-    function train_model(model, projection_head, opt, discriminator, node_embedding, ps, views, graph; λ::Float32, τ::Float32, epochs::Int64 = 300, verbose::Bool= false)::TrainResult
+    function train_model(model::MultiViewGNN, opt, views, graph; λ::Float32, τ::Float32, epochs::Int64 = 300, verbose::Bool= false)::TrainResult
         # todo, early stopping, patience or distance metric?
         # look at Flux.early_stopping or Flux.patience
+        state = Flux.setup(opt, model)
 
         logs = TrainLog(
             Float32[],
@@ -53,18 +50,36 @@ module ModelTraining
         )
 
         for epoch in 1:epochs
-            x = node_embedding(1:n)
             loss_epoch = 0.0f0
             acc_epoch = 0.0f0
             mod_loss_epoch = 0.0f0
             contrast_epoch = 0.0f0
 
-            grads = Flux.gradient(ps) do
+            # grads = Flux.gradient(ps) do
 
+                # total_loss, res = calculate_total_loss(
+                #     model,
+                #     discriminator,
+                #     projection_head,
+                #     views,
+                #     x,
+                #     τ,
+                #     λ
+                # )
+                # loss_epoch = total_loss
+                # mod_loss_epoch = res[:mod_loss]
+                # acc_epoch = res[:acc]
+                # contrast_epoch = res[:contrast_loss]
+
+                # return total_loss
+            # end
+
+            grads = Flux.gradient((model) -> begin
+                x = model.embedding(1:n)
                 total_loss, res = calculate_total_loss(
                     model,
-                    discriminator,
-                    projection_head,
+                    model.discriminator,
+                    model.projection_head,
                     views,
                     x,
                     τ,
@@ -75,10 +90,10 @@ module ModelTraining
                 acc_epoch = res[:acc]
                 contrast_epoch = res[:contrast_loss]
 
-                return loss_epoch
-            end
+                return total_loss
+            end, model)
 
-            Flux.Optimise.update!(opt, ps, grads)
+            Flux.Optimise.update!(state, model, grads[1])
 
 
             push!(logs.loss, loss_epoch)
@@ -92,7 +107,8 @@ module ModelTraining
             end
 
             if epoch % 10 == 0
-                output = forward_pass(model, views)
+                # todo, i can make this a part of the model's standard forward pass
+                output = model(views)
                 metrics = fast_evaluate_embeddings(cpu(output), graph)
                 push!(logs.modularity, metrics[:modularity])
                 # push!(logs.silhouette, metrics[:silhouettes])
@@ -110,7 +126,7 @@ module ModelTraining
     end
 
     export hyperparameter_search
-    function hyperparameter_search(base_model, base_proj, base_disc, base_embed, views, graph; lambdas, taus, epochs, n_repeats)::Vector{TrainResult}
+    function hyperparameter_search(base_model, views, graph; lambdas, taus, epochs, n_repeats)::Vector{TrainResult}
         results::Vector{TrainResult} = TrainResult[]
         configs = collect(Iterators.product(lambdas, taus))
 
@@ -123,18 +139,10 @@ module ModelTraining
                 Random.seed!(1000 * i + n)
 
                 model = gpu(deepcopy(base_model))
-                proj = gpu(deepcopy(base_proj))
-                disc = gpu(deepcopy(base_disc))
-                embed = gpu(deepcopy(base_embed))
                 opt = gpu(Flux.Adam(1e-3))
-                ps = Flux.params(model, proj, disc, embed)
-                @time result = train_model(
+                result = train_model(
                     model,
-                    proj,
                     opt,
-                    disc,
-                    embed,
-                    ps,
                     views,
                     graph;
                     λ=λ,
@@ -154,11 +162,4 @@ module ModelTraining
 
         return results
     end
-
-    # todo, give this a better name
-    export forward_pass
-    function forward_pass(model, views)
-        sum(g.weight[] * model(g.graph, g.graph.ndata.x) for g in views)
-    end
-
 end

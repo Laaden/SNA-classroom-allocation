@@ -1,11 +1,10 @@
 module Loss
-	include("types.jl")
-	using .Types
-	using GNNGraphs, Flux, Graphs, Random, Statistics, Zygote, Leiden, Clustering, LinearAlgebra
+	using ..Types
+	using GNNGraphs, Flux, Graphs, Random, Statistics, Zygote, Clustering, LinearAlgebra
 
 	Zygote.@nograd shuffle
 	export contrastive_loss
-function contrastive_loss(g, x::AbstractMatrix{Float32}, model::Any, discriminator::Any, proj_head::Any; τ::Float32=1f0)
+	function contrastive_loss(g, x::AbstractMatrix{Float32}, model::Any, discriminator::Any, proj_head::Any; τ::Float32=1f0)
 
 		# doing some DBI contrastive loss here
 		h = model(g.graph, x) |>
