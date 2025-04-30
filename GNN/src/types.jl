@@ -49,7 +49,6 @@ module Types
         logs::TrainLog
     end
 
-
     export MultiViewGNN
     struct MultiViewGNN
         layers::NamedTuple
@@ -65,7 +64,7 @@ module Types
 
     Flux.@layer MultiViewGNN
 
-    function MultiViewGNN(input_dim, output_dim, n_nodes)
+    function MultiViewGNN(input_dim::Int64, output_dim::Int64, n_nodes::Int64)
         layers = (
             conv1 = SAGEConv(input_dim => output_dim),
             conv2 = SAGEConv(output_dim => output_dim)
@@ -84,11 +83,12 @@ module Types
 
     function(mvgnn:: MultiViewGNN)(g::GNNGraph, x::AbstractMatrix)
         h = mvgnn.layers.conv1(g, x)
+        h = relu.(h)
         h = mvgnn.layers.conv2(g, h)
         return h
     end
 
-    function(mvgnn::MultiViewGNN)(views)
+    function(mvgnn::MultiViewGNN)(views::Vector{WeightedGraph})
         sum(g.weight[] * mvgnn(g.graph, g.graph.ndata.x) for g in views)
     end
 

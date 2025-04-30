@@ -42,36 +42,8 @@ composite_graph = reduce(
 
 # ~~ Setup Model ~~ #
 
-n_nodes = size(composite_graph, 1)
-embedding_dim = 64
-input_dim = embedding_dim
-output_dim = 64 # typically used for comm. detection, can try 64 as well
-
-model = MultiViewGNN(input_dim, output_dim, n_nodes) |> gpu
+model = MultiViewGNN(64, 64, size(composite_graph, 1)) |> gpu
 opt = Flux.Adam(1e-3) |> gpu
-
-# model = GNNChain(
-# 	SAGEConv(input_dim => output_dim),
-# 	x -> relu.(x),
-# 	SAGEConv(output_dim => output_dim)
-# ) |> gpu
-
-
-
-# proj_head = Chain(
-#     Dense(output_dim, output_dim, relu),
-#     Dense(output_dim, output_dim)
-# ) |> gpu
-
-# opt = Flux.Adam(1e-3) |> gpu
-# discriminator = Flux.Bilinear((output_dim, output_dim) => 1) |> gpu
-
-# node_embedding = Flux.Embedding(n_nodes, embedding_dim) |> gpu
-# ps = Flux.params(model, discriminator, proj_head, node_embedding)
-# ps = Flux.trainable((model, discriminator, proj_head, node_embedding))
-
-# opt_state = Flux.setup(opt, ps)
-
 
 # ~~ Train Model ~~ #
 
@@ -81,19 +53,16 @@ results = hyperparameter_search(
     composite_graph,
     taus    = [0.1f0, 0.5f0, 1f0],
     lambdas = [0.3f0, 0.5f0, 6.0f0, 10f0],
-    epochs = 300,
-    n_repeats = 1
+    epochs = 500,
+    n_repeats = 3
 )
 
 # given community detection is the goal,
 # modularity is our best metric for optimising the GNN
-best_parameters = argmax(r -> maximum(r.logs.modularity), results)
-
-best_parameters2 = argmax(r -> begin
+best_parameters = argmax(r -> begin
     m = maximum(r.logs.modularity)
-    s = 0 # maximum(r.logs.silhouette)
     l = minimum(r.logs.loss)
-    return (m + s + -l) / 3
+    return (m + -l) / 2
     end,
     results
 )
@@ -103,8 +72,8 @@ trained_model = train_model(
     opt,
     graph_views,
     composite_graph;
-    λ=1f0,#best_parameters.λ,
-    τ=1f0,#best_parameters.τ,
+    λ=best_parameters.λ,
+    τ=best_parameters.τ,
     verbose = true,
     epochs = 500
 )
@@ -112,7 +81,7 @@ trained_model = train_model(
 # ~~ Model Output & Aggregation ~~ #
 # This could technically end up as an algo as well
 
-output = forward_pass(trained_model.model, graph_views) |> cpu
+output = model(graph_views) |> cpu
 
 # # ~~ Pass this off to community detection ~~ #
 
@@ -136,116 +105,116 @@ composite_cluster_rates = intra_cluster_rate(
 # # ~~ PSO ~~ #
 # # do some PSO stuff at some point for class size & other node features
 
-using Plots, GraphPlot
+# using Plots, GraphPlot
 
-mod_search = best_parameters.logs.modularity
-silh = best_parameters.logs.silhouette
-acc = best_parameters.logs.accuracy
-loss = best_parameters.logs.loss
+# mod_search = best_parameters.logs.modularity
+# silh = best_parameters.logs.silhouette
+# acc = best_parameters.logs.accuracy
+# loss = best_parameters.logs.loss
 
-epochs = collect(1:length(loss))
-plot(
-    epochs,
-    [
-        repeat(mod_search, inner = 10),
-        acc,
-        loss ./ 100,
-        repeat(silh, inner = 10)
-    ],
-    label=["Modularity" "Disc. Accuracy" "Loss / 100" "Silhouette"],
-    lw = 3
-)
-xlabel!("Epoch")
-ylabel!("Metric")
-title!("GNN Metrics over Epoch")
-plot!(legend=:outerbottom, legendcolumns=3, lw=10)
-yticks!(0:0.1:0.8)
-
-
-mod_train = trained_model.logs.modularity
-epochs = collect(1:length(mod_search)) .* 10
-plot(
-    epochs,
-    [mod_search, mod_train],
-    label=["Hyperparameter Modularity" "Train Modularity"],
-    lw = 3
-)
-xlabel!("Epoch")
-ylabel!("Metric")
-title!("Modularity over Epoch")
-plot!(legend=:outerbottom, legendcolumns=3, lw=10)
-best_epoch_search = epochs[argmax(mod_search)]
-best_epoch_train = epochs[argmax(mod_train)]
-vline!([best_epoch_search], label=false, color=:blue, linestyle=:dash)
-vline!([best_epoch_train], label=false, color=:orange, linestyle=:dash)
-
-using Colors
-
-colours = distinguishable_colors(maximum(clusters.assignments))
-group_colors = colours[clusters.assignments]
-
-gplot(
-    composite_graph,
-    nodefillc = group_colors
-)
+# epochs = collect(1:length(loss))
+# plot(
+#     epochs,
+#     [
+#         repeat(mod_search, inner = 10),
+#         acc,
+#         loss ./ 100,
+#         repeat(silh, inner = 10)
+#     ],
+#     label=["Modularity" "Disc. Accuracy" "Loss / 100" "Silhouette"],
+#     lw = 3
+# )
+# xlabel!("Epoch")
+# ylabel!("Metric")
+# title!("GNN Metrics over Epoch")
+# plot!(legend=:outerbottom, legendcolumns=3, lw=10)
+# yticks!(0:0.1:0.8)
 
 
-using Plots
-plot()
-for r in results
-    plot!(
-        10:10:10*length(r.logs.modularity),
-        r.logs.modularity,
-        label=false,
-        lw = 3
-    )
-end
-xlabel!("Epoch")
-ylabel!("Modularity")
-title!("Modularity curves with early stopping")
+# mod_train = trained_model.logs.modularity
+# epochs = collect(1:length(mod_search)) .* 10
+# plot(
+#     epochs,
+#     [mod_search, mod_train],
+#     label=["Hyperparameter Modularity" "Train Modularity"],
+#     lw = 3
+# )
+# xlabel!("Epoch")
+# ylabel!("Metric")
+# title!("Modularity over Epoch")
+# plot!(legend=:outerbottom, legendcolumns=3, lw=10)
+# best_epoch_search = epochs[argmax(mod_search)]
+# best_epoch_train = epochs[argmax(mod_train)]
+# vline!([best_epoch_search], label=false, color=:blue, linestyle=:dash)
+# vline!([best_epoch_train], label=false, color=:orange, linestyle=:dash)
+
+# using Colors
+
+# colours = distinguishable_colors(maximum(clusters.assignments))
+# group_colors = colours[clusters.assignments]
+
+# gplot(
+#     composite_graph,
+#     nodefillc = group_colors
+# )
+
+
+# using Plots
+# plot()
+# for r in results
+#     plot!(
+#         10:10:10*length(r.logs.modularity),
+#         r.logs.modularity,
+#         label=false,
+#         lw = 3
+#     )
+# end
+# xlabel!("Epoch")
+# ylabel!("Modularity")
+# title!("Modularity curves with early stopping")
 
 
 
-function moving_average(x, w=3)
-    return [mean(x[max(1, i - w + 1):i]) for i in 1:length(x)]
-end
+# function moving_average(x, w=3)
+#     return [mean(x[max(1, i - w + 1):i]) for i in 1:length(x)]
+# end
 
-plot()
-for r in results
-    ma_curve = moving_average(r.logs.modularity)
-    plot!(10:10:10*length(ma_curve), ma_curve, label=false)
-end
-xlabel!("Epoch")
-ylabel!("Modularity")
-title!("Smoothed Modularity Curves with Early Stopping")
+# plot()
+# for r in results
+#     ma_curve = moving_average(r.logs.modularity)
+#     plot!(10:10:10*length(ma_curve), ma_curve, label=false)
+# end
+# xlabel!("Epoch")
+# ylabel!("Modularity")
+# title!("Smoothed Modularity Curves with Early Stopping")
 
 
-colors = cgrad(:viridis, length(results))  # color gradient
-final_modularities = [r.logs.modularity[end] for r in results]
-sorted_indices = sortperm(final_modularities, rev=true)  # highest first
-nudge = [-0.0, 0.00, -0.02]
+# colors = cgrad(:viridis, length(results))  # color gradient
+# final_modularities = [r.logs.modularity[end] for r in results]
+# sorted_indices = sortperm(final_modularities, rev=true)  # highest first
+# nudge = [-0.0, 0.00, -0.02]
 
-plot()
-for (rank, idx) in enumerate(sorted_indices)
-    r = results[idx]
-    ma_curve = moving_average(r.logs.modularity)
-    x_vals = 10:10:10*length(ma_curve)
-    plot!(
-        10:10:10*length(ma_curve),
-         ma_curve,
-         color=colors[idx * 10],
-         alpha = 0.3 + 0.7 *  (idx - rank) / (idx - 1),
-         label=false,
-         lw = 3
-    )
-    if rank <= 3
-        annotate!(
-            x_vals[end] - 50,    # X position (slightly before final epoch)
-            ma_curve[end] + nudge[rank],       # Y position (final modularity value)
-            text("λ=$(r.λ), τ=$(r.τ)", :black, 8)  # Text label, color, size
-        )
-    end
-end
-xlabel!("Epoch")
-ylabel!("Modularity")
-title!("Modularity Colored by Final Performance")
+# plot()
+# for (rank, idx) in enumerate(sorted_indices)
+#     r = results[idx]
+#     ma_curve = moving_average(r.logs.modularity)
+#     x_vals = 10:10:10*length(ma_curve)
+#     plot!(
+#         10:10:10*length(ma_curve),
+#          ma_curve,
+#          color=colors[idx * 10],
+#          alpha = 0.3 + 0.7 *  (idx - rank) / (idx - 1),
+#          label=false,
+#          lw = 3
+#     )
+#     if rank <= 3
+#         annotate!(
+#             x_vals[end] - 50,    # X position (slightly before final epoch)
+#             ma_curve[end] + nudge[rank],       # Y position (final modularity value)
+#             text("λ=$(r.λ), τ=$(r.τ)", :black, 8)  # Text label, color, size
+#         )
+#     end
+# end
+# xlabel!("Epoch")
+# ylabel!("Modularity")
+# title!("Modularity Colored by Final Performance")

@@ -4,24 +4,24 @@ module Loss
 
 	Zygote.@nograd shuffle
 	export contrastive_loss
-	function contrastive_loss(g, x::AbstractMatrix{Float32}, model::Any, discriminator::Any, proj_head::Any; τ::Float32=1f0)
+	function contrastive_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN; τ::Float32=1f0)
 
 		# doing some DBI contrastive loss here
 		h = model(g.graph, x) |>
-			proj_head |>
+			model.projection_head |>
 			x -> Flux.normalise(x, dims = 1)
 
 		x_neg = x[:, shuffle(1:end)]
 		h_neg = model(g.graph, x_neg) |>
-			proj_head |>
+			model.projection_head |>
 			x -> Flux.normalise(x, dims = 1)
 
 		global_summary = mean(h, dims=2)
 		summary_mat = repeat(global_summary, 1, size(h, 2)) |>
 			x -> Flux.normalise(x; dims = 1)
 
-		pos_scores = discriminator(h, summary_mat) / τ
-		neg_scores = discriminator(h_neg, summary_mat) / τ
+		pos_scores = model.discriminator(h, summary_mat) / τ
+		neg_scores = model.discriminator(h_neg, summary_mat) / τ
 
 		# we treat the graph and negative graph as a binary classification
 		# problem, so we create our own labels.
@@ -49,7 +49,7 @@ module Loss
     # The algorithm is modified slightly because we are using polarity to
 	# decrease modularity in the case of repulsive
 	export soft_modularity_loss
-	function soft_modularity_loss(g, x::AbstractMatrix{Float32}, model::T; λ::Float32=1f0) where {T}
+	function soft_modularity_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN; λ::Float32=1f0)
         A = sign(g.weight[]) * Float32.(g.adjacency_matrix)
 		h = Flux.softmax(model(g.graph, x); dims = 1)
 
@@ -78,22 +78,14 @@ module Loss
 
 
 	export calculate_total_loss
-	function calculate_total_loss(model, discriminator, projection_head, views, x::AbstractMatrix{Float32}, τ::Float32, λ::Float32)
+	function calculate_total_loss(model::MultiViewGNN, views::Vector{WeightedGraph}, x::AbstractMatrix{Float32}, τ::Float32, λ::Float32)
 		total_contrastive_loss = 0f0
 		total_modularity_loss = 0f0
 		total_accuracy = 0f0
 
 		for g in views
 			g.graph.ndata.x = x
-			contrast_loss, disc_acc = contrastive_loss(
-				g,
-				x,
-				model,
-				discriminator,
-				projection_head;
-				τ = τ
-			)
-
+			contrast_loss, disc_acc = contrastive_loss(g, x, model; τ=τ)
 			total_contrastive_loss += contrast_loss
 			total_accuracy += disc_acc
 			if (λ != 0)

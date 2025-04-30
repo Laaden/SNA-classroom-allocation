@@ -24,9 +24,7 @@ module ModelTraining
     # (inspired by SimCLR), which transforms embeddings into a separate space
     # optimised for DGI contrastive learning.
     export train_model
-    function train_model(model::MultiViewGNN, opt, views, graph; λ::Float32, τ::Float32, epochs::Int64 = 300, verbose::Bool= false)::TrainResult
-        # todo, early stopping, patience or distance metric?
-        # look at Flux.early_stopping or Flux.patience
+    function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, graph::GNNGraph; λ::Float32, τ::Float32, epochs::Int64 = 300, verbose::Bool= false)::TrainResult
         state = Flux.setup(opt, model)
 
         logs = TrainLog(
@@ -55,46 +53,17 @@ module ModelTraining
             mod_loss_epoch = 0.0f0
             contrast_epoch = 0.0f0
 
-            # grads = Flux.gradient(ps) do
-
-                # total_loss, res = calculate_total_loss(
-                #     model,
-                #     discriminator,
-                #     projection_head,
-                #     views,
-                #     x,
-                #     τ,
-                #     λ
-                # )
-                # loss_epoch = total_loss
-                # mod_loss_epoch = res[:mod_loss]
-                # acc_epoch = res[:acc]
-                # contrast_epoch = res[:contrast_loss]
-
-                # return total_loss
-            # end
-
             grads = Flux.gradient((model) -> begin
                 x = model.embedding(1:n)
-                total_loss, res = calculate_total_loss(
-                    model,
-                    model.discriminator,
-                    model.projection_head,
-                    views,
-                    x,
-                    τ,
-                    λ
-                )
+                total_loss, res = calculate_total_loss(model, views, x, τ, λ)
                 loss_epoch = total_loss
                 mod_loss_epoch = res[:mod_loss]
                 acc_epoch = res[:acc]
                 contrast_epoch = res[:contrast_loss]
-
                 return total_loss
             end, model)
 
             Flux.Optimise.update!(state, model, grads[1])
-
 
             push!(logs.loss, loss_epoch)
             push!(logs.accuracy, acc_epoch / length(views))
@@ -107,7 +76,6 @@ module ModelTraining
             end
 
             if epoch % 10 == 0
-                # todo, i can make this a part of the model's standard forward pass
                 output = model(views)
                 metrics = fast_evaluate_embeddings(cpu(output), graph)
                 push!(logs.modularity, metrics[:modularity])
@@ -117,16 +85,11 @@ module ModelTraining
             end
         end
 
-        return TrainResult(
-            model,
-            λ,
-            τ,
-            logs
-        )
+        return TrainResult(model, λ, τ, logs)
     end
 
     export hyperparameter_search
-    function hyperparameter_search(base_model, views, graph; lambdas, taus, epochs, n_repeats)::Vector{TrainResult}
+    function hyperparameter_search(base_model::MultiViewGNN, views::Vector{WeightedGraph}, graph::GNNGraph; lambdas, taus, epochs, n_repeats)::Vector{TrainResult}
         results::Vector{TrainResult} = TrainResult[]
         configs = collect(Iterators.product(lambdas, taus))
 
@@ -137,18 +100,9 @@ module ModelTraining
             @info "Running config $i of $(length(configs)) | λ = $λ, τ = $τ"
             for n in 1:n_repeats
                 Random.seed!(1000 * i + n)
-
                 model = gpu(deepcopy(base_model))
                 opt = gpu(Flux.Adam(1e-3))
-                result = train_model(
-                    model,
-                    opt,
-                    views,
-                    graph;
-                    λ=λ,
-                    τ=τ,
-                    epochs = epochs
-                )
+                result = train_model(model, opt, views, graph; λ=λ, τ=τ, epochs=epochs)
                 push!(config_results, result)
             end
             best = argmax(r -> maximum(r.logs.modularity), config_results)
