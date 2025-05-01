@@ -9,8 +9,6 @@ module Types
 
         function WeightedGraph(adj_mat::Matrix{Int64}, weight::Float32)
             g = GNNGraph(adj_mat) |> gpu
-            @assert length(weight) == 1 "Weight vector must have length 1"
-
             mtx = adjacency_matrix(g)
 
             # need to figure out which node features are the most helpful
@@ -39,6 +37,16 @@ module Types
         accuracy::Vector{Float32}
         modularity::Vector{Float32}
         silhouette::Vector{Float32}
+        conductance::Vector{Float32}
+        function TrainLog(
+            loss::Vector{Float32} = Float32[],
+            accuracy::Vector{Float32} = Float32[],
+            modularity::Vector{Float32} = Float32[],
+            silhouette::Vector{Float32} = Float32[],
+            conductance::Vector{Float32} = Float32[]
+        )
+            return new(loss, accuracy, modularity, silhouette, conductance)
+        end
     end
 
     export TrainResult

@@ -2,7 +2,7 @@
 module ModelEvaluation
     using Flux, Statistics, Graphs, GNNGraphs, Clustering, Distances, LinearAlgebra
 
-    function cluster_conductance(graph::GNNGraph, labels::Vector{Int}, k::Int)
+    function cluster_conductance(graph::GNNGraph, labels::Vector{Int}, k::Real)
         nodes = findall(node -> node == k, labels) |>
                 Set
         neighbour_list = neighbors.(Ref(graph), nodes)
@@ -69,11 +69,7 @@ module ModelEvaluation
     function fast_evaluate_embeddings(embeddings, graph; k = Int64(round(sqrt(size(embeddings, 2)))))
         norm_embeddings = Flux.normalise(embeddings; dims = 1)
         clusters = kmeans(norm_embeddings, k)
-        # return embedding_metrics(graph, norm_embeddings, clusters.assignments)
-        # returns dict for symmetry with the slow version
-        return Dict(
-            :modularity => modularity(graph, clusters.assignments)
-        )
+        return embedding_metrics(graph, norm_embeddings, clusters.assignments)
     end
 
     # todo, examine GPU compat

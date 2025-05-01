@@ -62,7 +62,9 @@ results = hyperparameter_search(
 best_parameters = argmax(r -> begin
     m = maximum(r.logs.modularity)
     l = minimum(r.logs.loss)
-    return (m + -l) / 2
+    s = maximum(r.logs.silhouette)
+    c = minimum(r.logs.conductance)
+    return (m + s - l - c) / 4
     end,
     results
 )

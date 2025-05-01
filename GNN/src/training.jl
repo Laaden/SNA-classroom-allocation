@@ -27,12 +27,7 @@ module ModelTraining
     function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, graph::GNNGraph; λ::Float32, τ::Float32, epochs::Int64 = 300, verbose::Bool= false)::TrainResult
         state = Flux.setup(opt, model)
 
-        logs = TrainLog(
-            Float32[],
-            Float32[],
-            Float32[],
-            Float32[]
-        )
+        logs = TrainLog()
 
         n = first(views).graph |>
             nv
@@ -79,7 +74,9 @@ module ModelTraining
                 output = model(views)
                 metrics = fast_evaluate_embeddings(cpu(output), graph)
                 push!(logs.modularity, metrics[:modularity])
-                # push!(logs.silhouette, metrics[:silhouettes])
+                push!(logs.silhouette, metrics[:silhouettes])
+                push!(logs.silhouette, metrics[:conductance])
+
 
                 es() && break
             end
