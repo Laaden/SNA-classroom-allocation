@@ -59,11 +59,13 @@ module Types
 
     export MultiViewGNN
     struct MultiViewGNN
+        # 2-layer GraphSage GNN
         layers::NamedTuple
         # projection head taken from SimCLR,
         # seems to help contrastive loss differentiate better
         # it's only used during training, we don't apply it on the final foreward pass
         projection_head::Chain
+        # Used for DGI contrastive loss
         discriminator::Flux.Bilinear
         # learned embbeddings seems to perform better than topological features
         # but need to experiment with a hybrid approach
@@ -72,6 +74,7 @@ module Types
 
     Flux.@layer MultiViewGNN
 
+    # Outer constructor for the MultiViewGNN
     function MultiViewGNN(input_dim::Int64, output_dim::Int64, n_nodes::Int64)
         layers = (
             conv1 = SAGEConv(input_dim => output_dim),
@@ -89,6 +92,7 @@ module Types
         return MultiViewGNN(layers, proj_head, disc, embed)
     end
 
+    # Forward pass for the GNN, acting on `g` graph and `x` node embedding matrix
     function(mvgnn:: MultiViewGNN)(g::GNNGraph, x::AbstractMatrix)
         h = mvgnn.layers.conv1(g, x)
         h = relu.(h)
@@ -96,8 +100,8 @@ module Types
         return h
     end
 
-    function(mvgnn::MultiViewGNN)(views::Vector{WeightedGraph})
-        sum(g.weight[] * mvgnn(g.graph, g.graph.ndata.x) for g in views)
-    end
+    # Convenience wrappers for doing a forward pass against a weighted graph structs/vectors
+    (mvgnn:: MultiViewGNN)(wg::WeightedGraph) = mvgnn(wg.graph, wg.graph.ndata.x)
+    (mvgnn::MultiViewGNN)(views::Vector{WeightedGraph}) = sum(g.weight[] * mvgnn(g) for g in views)
 
 end

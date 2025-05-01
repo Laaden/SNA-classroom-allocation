@@ -7,16 +7,17 @@ module ModelTraining
     # gradient tape. We use a multi-objective approach for the training:
     #   1. Modified DGI contrastive loss
     #       - Bilinear discriminator with negative sampling
+    #       - Projection head improves discrimination
     #       - Repulsive graphs are treated as negative signals
     #   2. Modified Soft modularity optimisation
-    #       - Repulsive graphs reduce soft modularity, encouraging
-    #         negative views to be pushed into different clusters
+    #       - Repulsive graphs reduce soft modularity by having their adjacency mats negated,
+    #         encouraging negative views to be pushed into different clusters
     #
-    # Weights are intentionally not applied to the training outputs. This
-    # is for a few reasons
-    #   1. Opted  to use GraphSage, which doesn't natively use edge weights.
-    #      Technically there are workarounds, but:
+    # Weights are intentionally NOT applied to the training outputs.
+    # This is for a few reasons
+    #   1.  GraphSage doesn't natively use edge weights. Technically there are workarounds, but:
     #   2. Real-time weight modification at inference was a hard requirement.
+    #
     # Weights *are* technically used in the training, for their polarity only.
     # The magnitude however, is left to post-hoc weighted embedding aggregation.
     #
@@ -75,9 +76,9 @@ module ModelTraining
                 metrics = fast_evaluate_embeddings(cpu(output), graph)
                 push!(logs.modularity, metrics[:modularity])
                 push!(logs.silhouette, metrics[:silhouettes])
-                push!(logs.silhouette, metrics[:conductance])
+                push!(logs.conductance, metrics[:conductance])
 
-
+                # we'll early stop if modularity hasn't improved in 200 epochs
                 es() && break
             end
         end
