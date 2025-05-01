@@ -49,7 +49,7 @@ module Loss
     # The algorithm is modified slightly because we are using polarity to
 	# decrease modularity in the case of repulsive
 	export soft_modularity_loss
-	function soft_modularity_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN; λ::Float32=1f0)
+	function soft_modularity_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN)
         A = sign(g.weight[]) * Float32.(g.adjacency_matrix)
 		h = Flux.softmax(model(g.graph, x); dims = 1)
 
@@ -62,42 +62,46 @@ module Loss
 
 		soft_mod = sum(diag(h * B * h'))
 		# todo, add a temperature value for further tuning
-		return λ * (-soft_mod / m)
+		return -soft_mod / m
 	end
 
-
-	# not differentiable
-	export hard_modularity_loss
-	function hard_modularity_loss(x, model, g)
-		h = cpu(model(g.graph, x))
-		k = Int64(round(sqrt(size(h, 2))))
-		clusters = kmeans(h, k)
-		return -modularity(cpu(g.graph), clusters.assignments)
+	# Adapted from modnet as well
+	# This regularisation loss ensures that
+	# we don't end up with degenerate clusters
+	export cluster_balance_loss
+	function cluster_balance_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN)
+    	h = Flux.softmax(model(g.graph, x); dims=1)
+		n = nv(g.graph)
+		k = round(Int, sqrt(n)) # this is a heuritic, need to assess
+		ratio = 1.0f0 / k
+		cluster_sums = sum(h, dims = 2) / n
+		return sum((cluster_sums .- ratio).^2)
 	end
-	Zygote.@nograd hard_modularity_loss
-
 
 	export calculate_total_loss
-	function calculate_total_loss(model::MultiViewGNN, views::Vector{WeightedGraph}, x::AbstractMatrix{Float32}, τ::Float32, λ::Float32)
+	function calculate_total_loss(model::MultiViewGNN, views::Vector{WeightedGraph}, x::AbstractMatrix{Float32}, τ::Float32, λ::Float32, γ::Float32)
 		total_contrastive_loss = 0f0
 		total_modularity_loss = 0f0
+		total_balance_loss = 0f0
 		total_accuracy = 0f0
 
 		for g in views
 			g.graph.ndata.x = x
 			contrast_loss, disc_acc = contrastive_loss(g, x, model; τ=τ)
+			if (λ != 0)
+            	total_modularity_loss += soft_modularity_loss(g, x, model)
+			end
+			total_balance_loss += cluster_balance_loss(g, x, model)
 			total_contrastive_loss += contrast_loss
 			total_accuracy += disc_acc
-			if (λ != 0)
-            	total_modularity_loss += soft_modularity_loss(g, x, model; λ=λ)
-			end
 		end
 
-    	total_loss = total_contrastive_loss + total_modularity_loss
+    	total_loss = total_contrastive_loss + λ * total_modularity_loss + γ * total_contrastive_loss
 
 		return (total_loss, Dict(
 			:contrast_loss => total_contrastive_loss,
 			:mod_loss => total_modularity_loss,
+			:balance_loss => total_balance_loss,
 			:acc => total_accuracy
 		))
 	end

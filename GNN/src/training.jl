@@ -25,7 +25,7 @@ module ModelTraining
     # (inspired by SimCLR), which transforms embeddings into a separate space
     # optimised for DGI contrastive learning.
     export train_model
-    function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, graph::GNNGraph; λ::Float32, τ::Float32, epochs::Int64 = 300, verbose::Bool= false)::TrainResult
+function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, graph::GNNGraph; λ::Float32, τ::Float32, γ::Float32, epochs::Int64=300, verbose::Bool=false)::TrainResult
         state = Flux.setup(opt, model)
 
         logs = TrainLog()
@@ -38,7 +38,7 @@ module ModelTraining
         # stop training early if modularity doesn't improve
         es =  Flux.early_stopping(
             () -> logs.modularity[end],
-            20;
+            15;
             distance = (a,b) -> b - a,
             min_dist = 1e-4
         )
@@ -51,7 +51,7 @@ module ModelTraining
 
             grads = Flux.gradient((model) -> begin
                 x = model.embedding(1:n)
-                total_loss, res = calculate_total_loss(model, views, x, τ, λ)
+                total_loss, res = calculate_total_loss(model, views, x, τ, λ, γ)
                 loss_epoch = total_loss
                 mod_loss_epoch = res[:mod_loss]
                 acc_epoch = res[:acc]
@@ -78,29 +78,29 @@ module ModelTraining
                 push!(logs.silhouette, metrics[:silhouettes])
                 push!(logs.conductance, metrics[:conductance])
 
-                # we'll early stop if modularity hasn't improved in 200 epochs
+                # we'll early stop if modularity hasn't improved in 150 epochs
                 es() && break
             end
         end
 
-        return TrainResult(model, λ, τ, logs)
+        return TrainResult(model, λ, τ, γ, logs)
     end
 
     export hyperparameter_search
-    function hyperparameter_search(base_model::MultiViewGNN, views::Vector{WeightedGraph}, graph::GNNGraph; lambdas, taus, epochs, n_repeats)::Vector{TrainResult}
+    function hyperparameter_search(base_model::MultiViewGNN, views::Vector{WeightedGraph}, graph::GNNGraph; lambdas, taus, gammas, epochs, n_repeats)::Vector{TrainResult}
         results::Vector{TrainResult} = TrainResult[]
-        configs = collect(Iterators.product(lambdas, taus))
+        configs = collect(Iterators.product(lambdas, taus, gammas))
 
         # todo, see if this can be threaded or parallel-processed
         # potentially difficult when working with GPUs
-        for  (i, (λ, τ)) in enumerate(configs)
+        for  (i, (λ, τ, γ)) in enumerate(configs)
             config_results::Vector{TrainResult} = TrainResult[]
-            @info "Running config $i of $(length(configs)) | λ = $λ, τ = $τ"
+            @info "Running config $i of $(length(configs)) | λ = $λ, τ = $τ, γ = $γ"
             for n in 1:n_repeats
                 Random.seed!(1000 * i + n)
                 model = gpu(deepcopy(base_model))
                 opt = gpu(Flux.Adam(1e-3))
-                result = train_model(model, opt, views, graph; λ=λ, τ=τ, epochs=epochs)
+                result = train_model(model, opt, views, graph; λ=λ, τ=τ, γ=γ, epochs=epochs)
                 push!(config_results, result)
             end
             best = argmax(r -> maximum(r.logs.modularity), config_results)
@@ -113,5 +113,18 @@ module ModelTraining
         end
 
         return results
+    end
+
+    export select_best_result
+    function select_best_result(results::Vector{TrainResult})
+        return argmax(r -> begin
+                m = maximum(r.logs.modularity)
+                l = minimum(r.logs.loss)
+                s = maximum(r.logs.silhouette)
+                c = minimum(r.logs.conductance)
+                return (m + s - l - c) / 4
+            end,
+            results
+        )
     end
 end

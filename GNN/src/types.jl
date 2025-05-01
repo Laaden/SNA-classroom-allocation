@@ -1,5 +1,6 @@
 module Types
     using GraphNeuralNetworks, Graphs, Flux
+    import Functors: @functor
 
     export WeightedGraph
     struct WeightedGraph
@@ -8,7 +9,7 @@ module Types
         adjacency_matrix::AbstractMatrix{<:Real}
 
         function WeightedGraph(adj_mat::Matrix{Int64}, weight::Float32)
-            g = GNNGraph(adj_mat) |> gpu
+            g = GNNGraph(adj_mat)
             mtx = adjacency_matrix(g)
 
             # need to figure out which node features are the most helpful
@@ -29,7 +30,12 @@ module Types
             # )
             return new(g, Ref(weight), mtx)
         end
+
+        function WeightedGraph(graph::GNNGraph, weight::Ref{Float32}, adjacency::AbstractMatrix{<:Real})
+            return new(graph, weight, adjacency)
+        end
     end
+    @functor WeightedGraph
 
     export TrainLog
     struct TrainLog
@@ -54,6 +60,7 @@ module Types
         model::T
         λ::Float32
         τ::Float32
+        γ::Float32
         logs::TrainLog
     end
 

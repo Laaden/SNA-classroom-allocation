@@ -5,7 +5,17 @@ using GNNProject
 
 # ENV["CUDA_VISIBLE_DEVICES"] = "-1"
 
-using Statistics, Graphs, Flux, GraphNeuralNetworks, Random, Zygote, DataFrames, CUDA, Leiden, Distances, LinearAlgebra
+using Statistics
+using Flux
+using GraphNeuralNetworks
+using Random
+using Zygote
+using DataFrames
+using CUDA
+using Leiden
+using Distances
+using LinearAlgebra
+using Graphs, GraphPlot
 
 # ~~ Read in data and setup data structures ~~ #
 
@@ -29,7 +39,7 @@ graph_views = [
     WeightedGraph(ad_mat, 0.9f0),
     WeightedGraph(ds_mat, -1.0f0),
     WeightedGraph(sc_mat, 0.1f0),
-]
+] |> gpu
 
 composite_graph = reduce(
     (graph, (edge, weight)) -> add_edges(graph, (edge[1], edge[2], fill(weight, length(edge[1])))),
@@ -51,23 +61,16 @@ results = hyperparameter_search(
     model,
     graph_views,
     composite_graph,
-    taus    = [0.1f0, 0.5f0, 1f0],
-    lambdas = [0.3f0, 0.5f0, 6.0f0, 10f0],
+    taus    = [0.5f0, 1f0],
+    lambdas = [5.0f0, 10f0],
+    gammas = [0.01f0, 0.1f0],
     epochs = 500,
     n_repeats = 3
 )
 
 # given community detection is the goal,
 # modularity is our best metric for optimising the GNN
-best_parameters = argmax(r -> begin
-    m = maximum(r.logs.modularity)
-    l = minimum(r.logs.loss)
-    s = maximum(r.logs.silhouette)
-    c = minimum(r.logs.conductance)
-    return (m + s - l - c) / 4
-    end,
-    results
-)
+best_parameters = select_best_result(results)
 
 trained_model = train_model(
     model,
@@ -76,6 +79,7 @@ trained_model = train_model(
     composite_graph;
     λ=best_parameters.λ,
     τ=best_parameters.τ,
+    γ=best_parameters.γ,
     verbose = true,
     epochs = 500
 )
@@ -95,13 +99,10 @@ k = Int64(round(sqrt(size(output, 2))))
 clusters = kmeans(Flux.normalise(output), k, maxiter=100)
 intraview_cluster_rates = intra_cluster_rate(
     clusters.assignments,
-    (graph_views),
+    cpu(graph_views),
     ["friendship", "influence", "feedback", "more_time", "advice", "disrespect", "affiliation"]
 )
-composite_cluster_rates = intra_cluster_rate(
-    clusters.assignments,
-    composite_graph
-)
+composite_cluster_rates = intra_cluster_rate(clusters.assignments, composite_graph)
 
 
 # # ~~ PSO ~~ #
@@ -161,62 +162,68 @@ composite_cluster_rates = intra_cluster_rate(
 # )
 
 
-# using Plots
-# plot()
-# for r in results
-#     plot!(
-#         10:10:10*length(r.logs.modularity),
-#         r.logs.modularity,
-#         label=false,
-#         lw = 3
-#     )
-# end
-# xlabel!("Epoch")
-# ylabel!("Modularity")
-# title!("Modularity curves with early stopping")
+function plot_graph(graph, labels::Vector{<:Real})
+    colours = distinguishable_colors(maximum(labels))
+    group_colors = colours[labels]
+    edge_colours = [weight > 0 ? RGBA(1, 1, 1, 0.05) : RGBA(1, 0, 0, .5) for weight in get_edge_weight(graph)]
+    layout = (args...) -> spring_layout(args...; C=30)
+    gplot(
+        graph,
+        layout = layout,
+        nodefillc = group_colors,
+        linetype = "curve",
+        edgestrokec = edge_colours,
+        NODESIZE=0.03
+    )
+end
+
+function plot_metric(results::Vector{<:TrainResult}, metric::Symbol)
+    colours = cgrad(:viridis, length(results))
+    final_scores = [getfield(r.logs, metric)[end] for r in results]
+    sorted_indices = sortperm(final_scores, rev=true)
+    p = plot()
+
+    for (rank, idx) in enumerate(sorted_indices)
+        r = results[idx]
+        values = getfield(r.logs, metric)
+        x_vals = 0:10:10*length(values)
+        plot!(
+         collect(1:length(values)).*10,
+         values,
+         label=false,
+         alpha = 0.3 + 0.7 * (1 + idx - rank) / (idx - 1),
+         lw = 3
+        )
+        if rank == 1
+            annotate!(
+                x_vals[end] - 50,
+                values[end],
+                text(
+                    "λ $(r.λ), τ $(r.τ), γ $(r.γ)",
+                    colours[idx],
+                    8
+                )
+            )
+        end
+    end
+    xlabel!("Epoch")
+    ylabel!(String(metric))
+    return p
+end
+
+function plot_metric(result1::TrainResult, result2::TrainResult, metric::Symbol)
+    return plot_metric([result1, result2], metric)
+end
+
+p1 = plot_metric(results, :modularity)
+p2 = plot_metric(results, :silhouette)
+p3 = plot_metric(results, :conductance)
+p4 = plot_metric(results, :accuracy)
+p5 = plot_metric(results, :loss)
 
 
-
-# function moving_average(x, w=3)
-#     return [mean(x[max(1, i - w + 1):i]) for i in 1:length(x)]
-# end
-
-# plot()
-# for r in results
-#     ma_curve = moving_average(r.logs.modularity)
-#     plot!(10:10:10*length(ma_curve), ma_curve, label=false)
-# end
-# xlabel!("Epoch")
-# ylabel!("Modularity")
-# title!("Smoothed Modularity Curves with Early Stopping")
+plot(p1, p2, p3, layout=(3, 1), link=:x)
 
 
-# colors = cgrad(:viridis, length(results))  # color gradient
-# final_modularities = [r.logs.modularity[end] for r in results]
-# sorted_indices = sortperm(final_modularities, rev=true)  # highest first
-# nudge = [-0.0, 0.00, -0.02]
-
-# plot()
-# for (rank, idx) in enumerate(sorted_indices)
-#     r = results[idx]
-#     ma_curve = moving_average(r.logs.modularity)
-#     x_vals = 10:10:10*length(ma_curve)
-#     plot!(
-#         10:10:10*length(ma_curve),
-#          ma_curve,
-#          color=colors[idx * 10],
-#          alpha = 0.3 + 0.7 *  (idx - rank) / (idx - 1),
-#          label=false,
-#          lw = 3
-#     )
-#     if rank <= 3
-#         annotate!(
-#             x_vals[end] - 50,    # X position (slightly before final epoch)
-#             ma_curve[end] + nudge[rank],       # Y position (final modularity value)
-#             text("λ=$(r.λ), τ=$(r.τ)", :black, 8)  # Text label, color, size
-#         )
-#     end
-# end
-# xlabel!("Epoch")
-# ylabel!("Modularity")
-# title!("Modularity Colored by Final Performance")
+plot_metric(trained_model, best_parameters, :conductance)
+plot_graph(composite_graph, clusters.assignments)
