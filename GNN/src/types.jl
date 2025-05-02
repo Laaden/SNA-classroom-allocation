@@ -1,6 +1,5 @@
 module Types
-    using GraphNeuralNetworks, Graphs, Flux
-    import Functors: @functor
+    using GraphNeuralNetworks, Graphs, Flux, Adapt
 
     export WeightedGraph
     struct WeightedGraph
@@ -10,7 +9,6 @@ module Types
 
         function WeightedGraph(adj_mat::Matrix{Int64}, weight::Float32)
             g = GNNGraph(adj_mat)
-            mtx = adjacency_matrix(g)
 
             # need to figure out which node features are the most helpful
             # degree and local_clustering seem to be important
@@ -28,24 +26,41 @@ module Types
             #     local_clustering_coefficient(g)',
             #     # pagerank(g)'
             # )
-            return new(g, Ref(weight), mtx)
+            return new(g, Ref(weight), Float32.(adj_mat))
         end
 
         function WeightedGraph(graph::GNNGraph, weight::Ref{Float32}, adjacency::AbstractMatrix{<:Real})
             return new(graph, weight, adjacency)
         end
     end
-    @functor WeightedGraph
+
+    Adapt.@adapt_structure WeightedGraph
+
+    struct LossLogs
+        total_loss::Vector{Float32}
+        balance_loss::Vector{Float32}
+        contrast_loss::Vector{Float32}
+        modularity_loss::Vector{Float32}
+        function LossLogs(
+            total::Vector{Float32} = Float32[],
+            balance::Vector{Float32} = Float32[],
+            contrast::Vector{Float32} = Float32[],
+            modularity::Vector{Float32} = Float32[]
+        )
+            return new(total, balance, contrast, modularity)
+        end
+    end
+
 
     export TrainLog
     struct TrainLog
-        loss::Vector{Float32}
+        loss::LossLogs
         accuracy::Vector{Float32}
         modularity::Vector{Float32}
         silhouette::Vector{Float32}
         conductance::Vector{Float32}
         function TrainLog(
-            loss::Vector{Float32} = Float32[],
+            loss::LossLogs = LossLogs(),
             accuracy::Vector{Float32} = Float32[],
             modularity::Vector{Float32} = Float32[],
             silhouette::Vector{Float32} = Float32[],

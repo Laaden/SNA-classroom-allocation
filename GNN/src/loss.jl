@@ -50,7 +50,7 @@ module Loss
 	# decrease modularity in the case of repulsive
 	export soft_modularity_loss
 	function soft_modularity_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN)
-        A = sign(g.weight[]) * Float32.(g.adjacency_matrix)
+    	A = sign(g.weight[]) * g.adjacency_matrix
 		h = Flux.softmax(model(g.graph, x); dims = 1)
 
 		indegs = Float32.(degree(g.graph, dir=:in))
@@ -72,11 +72,17 @@ module Loss
 	function cluster_balance_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN)
     	h = Flux.softmax(model(g.graph, x); dims=1)
 		n = nv(g.graph)
-		k = round(Int, sqrt(n)) # this is a heuritic, need to assess
+		k = infer_k(n) # this is a heuritic, need to assess
 		ratio = 1.0f0 / k
 		cluster_sums = sum(h, dims = 2) / n
 		return sum((cluster_sums .- ratio).^2)
 	end
+
+	function infer_k(n)
+    	return round(Int, sqrt(n))
+	end
+	Zygote.@nograd infer_k
+
 
 	export calculate_total_loss
 	function calculate_total_loss(model::MultiViewGNN, views::Vector{WeightedGraph}, x::AbstractMatrix{Float32}, τ::Float32, λ::Float32, γ::Float32)
@@ -96,7 +102,9 @@ module Loss
 			total_accuracy += disc_acc
 		end
 
-    	total_loss = total_contrastive_loss + λ * total_modularity_loss + γ * total_contrastive_loss
+    	total_loss = total_contrastive_loss +
+			λ * total_modularity_loss +
+			γ * total_balance_loss
 
 		return (total_loss, Dict(
 			:contrast_loss => total_contrastive_loss,

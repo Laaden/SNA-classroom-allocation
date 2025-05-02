@@ -1,6 +1,7 @@
 
 module ModelEvaluation
-    using Flux, Statistics, Graphs, GNNGraphs, Clustering, Distances, LinearAlgebra
+    using Flux, Statistics, Graphs, GNNGraphs, Clustering, Distances, LinearAlgebra, Leiden
+    using ..Types
 
     function cluster_conductance(graph::GNNGraph, labels::Vector{Int}, k::Real)
         nodes = findall(node -> node == k, labels) |>
@@ -56,14 +57,16 @@ module ModelEvaluation
     end
 
     export evaluate_embeddings
-    function evaluate_embeddings(embeddings, graph; k=10)
-        # norm_embeddings = Flux.normalise(embeddings; dims = 1)
-        # knn = knn_graph(norm_embeddings, k)
-        # clusters = leiden(adjacency_matrix(knn), "ngrb")
-        # return embedding_metrics(graph, norm_embeddings, clusters)
-        return 0
+    function evaluate_embeddings(
+        embeddings,
+        graph;
+        k = Int64(round(sqrt(size(embeddings, 2))))
+    )
+        norm_embeddings = Flux.normalise(embeddings; dims = 1)
+        knn = knn_graph(norm_embeddings, k)
+        clusters = leiden(adjacency_matrix(knn), "ngrb")
+        return embedding_metrics(graph, norm_embeddings, clusters)
     end
-
 
     export fast_evaluate_embeddings
     function fast_evaluate_embeddings(embeddings, graph; k = Int64(round(sqrt(size(embeddings, 2)))))
@@ -116,6 +119,41 @@ module ModelEvaluation
         else
              return Dict(name => intra_cluster_rate(assignments, v.graph) for (v, name) in zip(views, names))
         end
+    end
+
+    export model_summary
+    function model_summary(
+        embeddings::Matrix{<:Real},
+        assignments::Vector{<:Real},
+        composite_graph::GNNGraph,
+        views::Vector{WeightedGraph},
+        model_params::NamedTuple,
+        names::Union{Nothing, Vector{String}} = nothing,
+    )
+        composite_rates = intra_cluster_rate(assignments, composite_graph)
+        intra_rates = intra_cluster_rate(assignments, views, names)
+        embed_eval = fast_evaluate_embeddings(embeddings, composite_graph)
+
+        return Dict(
+            :model => Dict(
+                :parameters => Dict(pairs(model_params))
+            ),
+
+            :metrics => Dict(
+                :embedding => Dict(
+                    :n_clusters => length(unique(assignments)),
+                    :quality => embed_eval,
+                    :mean_norm => mean(norm.(eachrow(embeddings))),
+                    :var_norm => var(norm.(eachrow(embeddings))),
+                ),
+                :clustering => Dict(
+                    :intra_cluster => Dict(
+                        :per_view => intra_rates,
+                        :composite => composite_rates
+                    )
+                )
+            ),
+        )
     end
 end
 

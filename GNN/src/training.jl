@@ -25,7 +25,7 @@ module ModelTraining
     # (inspired by SimCLR), which transforms embeddings into a separate space
     # optimised for DGI contrastive learning.
     export train_model
-function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, graph::GNNGraph; λ::Float32, τ::Float32, γ::Float32, epochs::Int64=300, verbose::Bool=false)::TrainResult
+    function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, graph::GNNGraph; λ::Float32, τ::Float32, γ::Float32, epochs::Int64=300, verbose::Bool=false)::TrainResult
         state = Flux.setup(opt, model)
 
         logs = TrainLog()
@@ -48,12 +48,14 @@ function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, gra
             acc_epoch = 0.0f0
             mod_loss_epoch = 0.0f0
             contrast_epoch = 0.0f0
+            balance_epoch = 0.0f0
 
             grads = Flux.gradient((model) -> begin
                 x = model.embedding(1:n)
                 total_loss, res = calculate_total_loss(model, views, x, τ, λ, γ)
                 loss_epoch = total_loss
                 mod_loss_epoch = res[:mod_loss]
+                balance_epoch = res[:balance_loss]
                 acc_epoch = res[:acc]
                 contrast_epoch = res[:contrast_loss]
                 return total_loss
@@ -61,7 +63,11 @@ function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, gra
 
             Flux.Optimise.update!(state, model, grads[1])
 
-            push!(logs.loss, loss_epoch)
+            push!(logs.loss.balance_loss, balance_epoch)
+            push!(logs.loss.modularity_loss, mod_loss_epoch)
+            push!(logs.loss.contrast_loss, contrast_epoch)
+            push!(logs.loss.total_loss, loss_epoch)
+
             push!(logs.accuracy, acc_epoch / length(views))
 
             if epoch % 10 == 0 && verbose == true
@@ -119,7 +125,7 @@ function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, gra
     function select_best_result(results::Vector{TrainResult})
         return argmax(r -> begin
                 m = maximum(r.logs.modularity)
-                l = minimum(r.logs.loss)
+                l = minimum(r.logs.loss.total_loss)
                 s = maximum(r.logs.silhouette)
                 c = minimum(r.logs.conductance)
                 return (m + s - l - c) / 4
