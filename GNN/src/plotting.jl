@@ -20,7 +20,7 @@ module Plotting
     end
 
     export plot_metric
-    function plot_metric(results::Vector{<:TrainResult}, metric::Symbol)
+    function plot_metric(results::Vector, metric::Symbol)
         colours = cgrad(:turbo)
         final_scores = [getfield(r.logs, metric)[end] for r in results]
         sorted_indices = sortperm(
@@ -49,7 +49,7 @@ module Plotting
     end
 
     export plot_loss_composition
-    function plot_loss_composition(result::TrainResult)
+    function plot_loss_composition(result)
 
         p = areaplot(
             1:length(result.logs.loss.total_loss),

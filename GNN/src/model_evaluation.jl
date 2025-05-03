@@ -126,7 +126,7 @@ module ModelEvaluation
         embeddings::Matrix{<:Real},
         assignments::Vector{<:Real},
         composite_graph::GNNGraph,
-        views::Vector{WeightedGraph},
+        views::Vector,
         model_params::NamedTuple,
         names::Union{Nothing, Vector{String}} = nothing,
     )
