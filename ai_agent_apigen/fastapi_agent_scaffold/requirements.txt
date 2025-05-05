@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pymongo
+openai<1.0
+python-dotenv
+jinja2
+requests
+python-multipart
