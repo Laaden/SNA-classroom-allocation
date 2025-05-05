@@ -14,18 +14,10 @@ module Types
             # degree and local_clustering seem to be important
             # relying on topological node features because using demographic or
             # academic perf can bias the model for community detection
-            #
-            # currently not being used, but need to test if it leads to better performance
-            # to combine static + learned embeddings
-            #
-            # g.ndata.topo = vcat(
-            #     # rand(Float32, g.num_nodes)',
-            #     # eigenvector_centrality(g)',
-            #     # degree_centrality(g)',
-            #     # betweenness_centrality(g)',
-            #     local_clustering_coefficient(g)',
-            #     # pagerank(g)'
-            # )
+            g.ndata.topo = hcat(
+                degree_centrality(g),
+                local_clustering_coefficient(g),
+            )'
             return new(g, Ref(weight), Float32.(adj_mat))
         end
 
@@ -116,6 +108,8 @@ module Types
 
     # Forward pass for the GNN, acting on `g` graph and `x` node embedding matrix
     function(mvgnn:: MultiViewGNN)(g::GNNGraph, x::AbstractMatrix)
+        # todo
+        # x_full = vcat(x, g.ndata.topo)
         h = mvgnn.layers.conv1(g, x)
         h = relu.(h)
         h = mvgnn.layers.conv2(g, h)

@@ -1,23 +1,8 @@
 module Plotting
     using Plots, GNNGraphs, Graphs, GraphPlot, Colors
-    using MultivariateStats, UMAP
+    using MultivariateStats, UMAP, GraphMakie, NetworkLayout
+    import CairoMakie as CM
     using ..Types
-
-    export plot_network
-    function plot_network(graph, labels::Vector{<:Real})
-        colours = distinguishable_colors(maximum(labels))
-        group_colors = colours[labels]
-        edge_colours = [weight > 0 ? RGBA(1, 1, 1, 0.05) : RGBA(1, 0, 0, 0.5) for weight in get_edge_weight(graph)]
-        layout = (args...) -> spring_layout(args...; C=30)
-        gplot(
-            graph,
-            layout=layout,
-            nodefillc=group_colors,
-            linetype="curve",
-            edgestrokec=edge_colours,
-            NODESIZE=0.03
-        )
-    end
 
     export plot_metric
     function plot_metric(results::Vector, metric::Symbol)
@@ -33,16 +18,19 @@ module Plotting
             r = results[idx]
             r_colour = get_colour_from_params(colours, r.λ, r.τ, r.γ)
             values = getfield(r.logs, metric)
-            label = rank == 1 ? "λ $(r.λ), τ $(r.τ), γ $(r.γ)" : false
+            label = rank <= 2 ? "λ $(r.λ), τ $(r.τ), γ $(r.γ)" : false
+            epoch = metric == :accuracy ? 1 : 10
+
             plot!(
-                collect(1:length(values)) .* 10,
+                collect(1:length(values)) .* epoch,
                 values,
                 color = r_colour,
                 label=label,
-                alpha= rank == 1 ? 1 : 0.3,
-                lw=3
+                alpha= rank <= 3 ? 1 : 0.15,
+                lw = rank <= 3 ? 3 : 1.5
             )
         end
+        title!(titlecase(string(metric)) * " by Epoch")
         xlabel!("Epoch")
         ylabel!(String(metric))
         return p
@@ -64,7 +52,7 @@ module Plotting
         )
         xlabel!("Epoch")
         ylabel!("Loss")
-
+        annotate!((0.35, 0.80), "λ = $(result.λ), τ = $(result.τ), γ = $(result.γ)")
 
         return p
     end
@@ -101,6 +89,30 @@ module Plotting
         return gradient[h]
     end
 
+    export plot_network
+    function plot_network(graph, labels::Vector{<:Real})
+        colours = distinguishable_colors(maximum(labels))
+        group_colors = colours[labels]
+        edge_colours = [weight > 0 ? RGBA(1, 1, 1, 0.05) : RGBA(1, 0, 0, 0.5) for weight in get_edge_weight(graph)]
+        f, ax, p = graphplot(
+            graph,
+            layout=NetworkLayout.SFDP(
+                iterations=200,
+                C=0.3,
+                K=1.2,
+                seed=1234
+            ),
+            node_color=group_colors,
+            edge_color=edge_colours,
+            node_attr=(
+                strokecolor=:black,
+                strokewidth=1.5,
+            )
+        )
+        CM.hidedecorations!(ax)
+        CM.hidespines!(ax)
+        ax.aspect = CM.DataAspect()
+        return p
+    end
+
 end
-
-

@@ -24,6 +24,7 @@ module DataLoader
                 sort
         node_to_index = Dict(n => i for (i, n) in enumerate(all_ids))
         n = length(all_ids)
+        index_to_node = Dict(i => n for (n, i) in node_to_index)
 
         adj_mtxs = []
 
@@ -36,12 +37,12 @@ module DataLoader
             end
             push!(adj_mtxs, adj_mtx)
         end
-        return Tuple(adj_mtxs)
+        return Tuple(adj_mtxs), index_to_node
     end
 
     export load_views_and_composite
     function load_views_and_composite(xlsx_file::String)
-        fr_mat, inf_mat, fd_mat, mt_mat, ad_mat, ds_mat, sc_mat = create_adjacency_matrix(
+        (adjacency_matrices, index_to_node) = create_adjacency_matrix(
             matrix_from_sheet(xlsx_file, "net_0_Friends"),
             matrix_from_sheet(xlsx_file, "net_1_Influential"),
             matrix_from_sheet(xlsx_file, "net_2_Feedback"),
@@ -51,14 +52,16 @@ module DataLoader
             matrix_from_sheet(xlsx_file, "net_affiliation_0_SchoolActivit"),
         )
 
+        fr_mat, inf_mat, fd_mat, mt_mat, ad_mat, ds_mat, sc_mat = adjacency_matrices
+
         graph_views = gpu.([
-            WeightedGraph(fr_mat, 0.4f0),
-            WeightedGraph(inf_mat, 0.6f0),
-            WeightedGraph(fd_mat, 0.8f0),
-            WeightedGraph(mt_mat, 1.0f0),
-            WeightedGraph(ad_mat, 0.9f0),
-            WeightedGraph(ds_mat, -1.0f0),
-            WeightedGraph(sc_mat, 0.1f0),
+            WeightedGraph(fr_mat, 1.0f0),#0.4f0),
+            WeightedGraph(inf_mat, 1.0f0),#0.6f0),
+            WeightedGraph(fd_mat, 1.0f0),#0.8f0),
+            WeightedGraph(mt_mat, 1.0f0),#1.0f0),
+            WeightedGraph(ad_mat, 1.0f0),#0.9f0),
+            WeightedGraph(ds_mat, -1.0f0),#-1.0f0),
+            WeightedGraph(sc_mat, 1.0f0),#0.1f0),
         ])
 
         composite_graph = reduce(
@@ -70,7 +73,7 @@ module DataLoader
             init=GNNGraph()
         )
 
-        return graph_views, composite_graph
+        return graph_views, composite_graph, index_to_node
     end
 
 end

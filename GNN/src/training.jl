@@ -109,7 +109,7 @@ module ModelTraining
                 result = train_model(model, opt, views, graph; λ=λ, τ=τ, γ=γ, epochs=epochs)
                 push!(config_results, result)
             end
-            best = argmax(r -> maximum(r.logs.modularity), config_results)
+            best = argmax(r -> mean(r.logs.modularity), config_results)
             push!(results, best)
         end
 

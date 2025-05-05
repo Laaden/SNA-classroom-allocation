@@ -10,7 +10,7 @@ Model needs to be trained against the full dataset. At present, this is just tes
 
 Examining the clusters (produced via a basic, unrefined KMeans), we get evidence of repulsion & attraction working effectively. If we compare this to the composite graph, we can see the repulsive effects more clearly. See output/logs for more metrics.
 
-![accuracy](outputlogs//accuracy.png)
+![accuracy](output/logs/accuracy.png)
 
 ![Cluster Metrics](output/logs/sweep.png)
 

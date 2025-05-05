@@ -76,6 +76,9 @@ module ModelEvaluation
     end
 
     # todo, examine GPU compat
+    # Number of nodes in the same cluster compared to the total number
+    # of nodes
+    # We'd expect negative views to have lower cluster rate
     export intra_cluster_rate
     function intra_cluster_rate(assignments::Vector{<:Real}, graph)
         pos_intra = 0
@@ -134,6 +137,11 @@ module ModelEvaluation
         intra_rates = intra_cluster_rate(assignments, views, names)
         embed_eval = fast_evaluate_embeddings(embeddings, composite_graph)
 
+        # baseline comparison
+        base_adj_mat = adjacency_matrix(composite_graph)
+        base_clusters = leiden(base_adj_mat, "ngrb")
+
+
         return Dict(
             :model => Dict(
                 :parameters => Dict(pairs(model_params))
@@ -153,6 +161,26 @@ module ModelEvaluation
                     )
                 )
             ),
+
+            :baseline_metrics => Dict(
+                :embedding => Dict(
+                    :n_clusters => length(unique(base_clusters)),
+                    :quality => Dict(
+                        :modularity => modularity(composite_graph, base_clusters),
+                        :conductance => cluster_conductance.(
+                            Ref(composite_graph),
+                            Ref(base_clusters),
+                            unique(base_clusters)
+                        ) |> mean
+                    )
+                ),
+                :clustering => Dict(
+                    :intra_cluster => Dict(
+                        :per_view => intra_cluster_rate(base_clusters, views, names),
+                        :composite => intra_cluster_rate(base_clusters, composite_graph)
+                    )
+                )
+            )
         )
     end
 end
