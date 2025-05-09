@@ -1,5 +1,8 @@
 name: Build GNNWorker
 
+permissions:
+  contents: write
+
 on:
   push:
     tags:
