@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="description" content="ClassForge Allocation" />
+    <meta name="keywords" content="ClassForge, Allocation, Classroom, AI allocation" />
+    <meta name="author" content="Ha Ngo" />
+    <title>ClassForge - Allocation</title>
+    <link rel="stylesheet" href="styles/classforge.css">
+</head>
+<body>
+    <!-- Header Section (Same as index page) -->
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <a href="index.html" class="logo-link">ClassForge</a>
+            </div>
+            <nav class="navbar">
+                <ul class="nav-list">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="allocation.html" class="active">Allocation</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Allocation Content -->
+    <section id="allocation">
+        <div class="container">
+            <h2>Classroom Allocation</h2>
+            <form id="allocationForm">
+                <div class="form-group">
+                    <label for="academicWeight">Academic Performance Weight:</label>
+                    <input type="range" id="academicWeight" name="academicWeight" min="0" max="100" value="50">
+                </div>
+                <div class="form-group">
+                    <label for="socialWeight">Social Integration Weight:</label>
+                    <input type="range" id="socialWeight" name="socialWeight" min="0" max="100" value="50">
+                </div>
+                <div class="form-group">
+                    <label for="wellBeingWeight">Well-Being Weight:</label>
+                    <input type="range" id="wellBeingWeight" name="wellBeingWeight" min="0" max="100" value="50">
+                </div>
+                <button type="submit">Run Allocation</button>
+            </form>
+            <div id="resultsContainer">
+                <p>No results yet. Adjust preferences and run allocation.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 ClassForge. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
