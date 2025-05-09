@@ -21,12 +21,16 @@ export default function ResultPage() {
   const [studentList, setStudentList] = useState([]);
   const [edgeTypeFilter, setEdgeTypeFilter] = useState("All");
 
+const BASE_URL = import.meta.env.MODE === "development"
+  ? "/api"
+  : "http://3.105.47.11:8000/api";
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [nodesRes, edgesRes] = await Promise.all([
-          fetch("/api/result_node_cluster"),
-          fetch("/api/result_edges_info")
+          fetch(`${BASE_URL}/result_node_cluster`),
+          fetch(`${BASE_URL}/result_edges_info`)
         ]);
 
         if (!nodesRes.ok || !edgesRes.ok) {
