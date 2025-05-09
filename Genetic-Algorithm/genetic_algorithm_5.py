@@ -6,7 +6,7 @@ from deap import base, creator, tools, algorithms
 import matplotlib.pyplot as plt
 from pymongo import MongoClient
 
-# ——— 1) Connect & build name map ———
+# Connect & build name map
 MONGO_URI = os.environ.get("MONGO_URI", "mongodb://3.105.47.11:27017")
 client    = MongoClient(MONGO_URI)
 db        = client["sna_database"]
@@ -22,7 +22,7 @@ for doc in db.sna_student_raw.find(
     name  = f"{doc.get('First-Name','').strip()} {doc.get('Last-Name','').strip()}".strip()
     id_name_map[pid] = name
 
-# ——— 2) Load clusters CSV & detect its label column ———
+# Load clusters CSV & detect its label column (needs to be replaced with GNN step)
 df_clusters = pd.read_csv("clustered_students.csv")
 cols = df_clusters.columns.tolist()
 
@@ -60,7 +60,7 @@ df_clusters["cluster_label"] = pd.to_numeric(df_clusters["cluster_label"], error
 # number of distinct classes to force in GA
 K = df_clusters["cluster_label"].nunique()
 
-# ——— 3) Pull raw survey + performance ———
+# Pull raw survey + performance
 df_raw = pd.DataFrame(list(db.sna_student_raw.find({}, {"_id": 0})))
 if "Participant-ID" in df_raw:
     df_raw["Participant-ID"] = pd.to_numeric(
@@ -88,7 +88,7 @@ df = (
 # avoid pandas FutureWarning
 df["Perc_Academic"] = df["Perc_Academic"].fillna(df["Perc_Academic"].mean())
 
-# ——— 4) GA setup ———
+# Genetic Algorithm (GA) setup
 student_ids = df[sid_col].tolist()
 perf_array  = df["Perc_Academic"].values.astype(float)
 N           = len(student_ids)
@@ -121,7 +121,7 @@ toolbox.register("mate",     tools.cxTwoPoint)
 toolbox.register("mutate",   tools.mutUniformInt, low=0, up=K-1, indpb=0.05)
 toolbox.register("select",   tools.selNSGA2)
 
-# ——— 5) Run GA & persist ———
+# Run GA & persist
 def main(seed=42):
     np.random.seed(seed)
     pop = [toolbox.individual() for _ in range(200)]
