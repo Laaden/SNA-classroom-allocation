@@ -1,31 +1,34 @@
 using Pkg
 Pkg.activate(joinpath(@__DIR__, ".."))
-using GNNProject, Graphs, GNNGraphs, BSON, Flux, Leiden
+using GNNProject, Graphs, GNNGraphs, BSON, Flux, Leiden, DataFrames
 
 
-OUTPUT_DIR = joinpath(@__DIR__, "..", "output")
+const OUTPUT_DIR = joinpath(@__DIR__, "..", "output")
 
-DATA_PATH = joinpath(@__DIR__, "..", "data/Student Survey - Jan.xlsx")
-MODEL_PATH = joinpath(OUTPUT_DIR, "models", "model.bson")
-TRAIN_RESULT_PATH = joinpath(OUTPUT_DIR, "models", "train_result.bson")
-EMBEDDING_PATH = joinpath(OUTPUT_DIR, "artifacts", "embeddings.bson")
-RESULTS_PATH = joinpath(OUTPUT_DIR, "artifacts", "results.bson")
-CLUSTERS_PATH = joinpath(OUTPUT_DIR, "artifacts", "clusters.bson")
-VIEWS_PATH = joinpath(OUTPUT_DIR, "artifacts", "views.bson")
-COMPOSITE_GRAPH_PATH = joinpath(OUTPUT_DIR, "artifacts", "composite_graph.bson")
-CLUSTERED_STUDENT_PATH = joinpath(OUTPUT_DIR, "artifacts", "clustered_students.bson")
+const DATA_PATH = joinpath(@__DIR__, "..", "data/Student Survey - Jan.xlsx")
+const MODEL_PATH = joinpath(OUTPUT_DIR, "models", "model.bson")
+const TRAIN_RESULT_PATH = joinpath(OUTPUT_DIR, "models", "train_result.bson")
+const EMBEDDING_PATH = joinpath(OUTPUT_DIR, "artifacts", "embeddings.bson")
+const RESULTS_PATH = joinpath(OUTPUT_DIR, "artifacts", "results.bson")
+const CLUSTERS_PATH = joinpath(OUTPUT_DIR, "artifacts", "clusters.bson")
+const VIEWS_PATH = joinpath(OUTPUT_DIR, "artifacts", "views.bson")
+const COMPOSITE_GRAPH_PATH = joinpath(OUTPUT_DIR, "artifacts", "composite_graph.bson")
+const CLUSTERED_STUDENT_PATH = joinpath(OUTPUT_DIR, "artifacts", "clustered_students.bson")
 
 graph_views, composite_graph, index_to_node = load_views_and_composite(DATA_PATH)
 
-model = MultiViewGNN(64, 64, size(composite_graph, 1)) |> gpu
+model = MultiViewGNN(
+    size(graph_views[1].graph.ndata.topo, 1),
+    size(composite_graph, 1)
+) |> gpu
 opt = Flux.Adam(1e-3) |> gpu
 results = hyperparameter_search(
     model,
     graph_views,
     composite_graph,
-    taus=[0.5f0, 1.0f0],
-    lambdas=[5.0f0, 10.0f0],
-    gammas=[0.01f0],
+    taus=[0.1f0, 0.5f0],
+    lambdas=[0.0f0, 1.0f0, 100.0f0],
+    gammas=[0.01f0, 0.0f0],
     epochs=500,
     n_repeats=3
 )
