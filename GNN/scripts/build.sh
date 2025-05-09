@@ -6,6 +6,13 @@ trap 'rm -f "$tmpfile"' EXIT
 
 CMD='using GNNProject; GNNProject.julia_main()'
 
+# Install package dependencies
+julia --project="$SCRIPT_DIR/.." -e '
+using Pkg
+Pkg.instantiate()
+Pkg.precompile()
+'
+
 # Generate precompile trace
 # This makes the produced executable not require JIT
 # compilation = faster CLI executable
