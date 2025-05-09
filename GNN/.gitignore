@@ -1,0 +1,4 @@
+build/GNNWorker/
+data/
+output/artifacts/
+scripts/compile_trace*
