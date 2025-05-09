@@ -22,7 +22,7 @@ module Types
         adjacency_matrix::AbstractMatrix{<:Real}
         view_type::String
 
-        function WeightedGraph(adj_mat::Matrix{Int64}, weight::Float32, view_name::String)
+        function WeightedGraph(adj_mat::AbstractMatrix{<:Integer}, weight::Float32, view_name::String)
             g = GNNGraph(adj_mat)
 
             # Topological node features were chosen using
