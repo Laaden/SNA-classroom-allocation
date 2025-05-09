@@ -14,7 +14,8 @@ def generate_clusters(data: str):
             ],
             input = data,
             text=True,
-            capture_output=True
+            capture_output=True,
+            env={**os.environ, "JULIA_NUM_THREADS": "auto"}
         ).stdout
         return pd.DataFrame(json.loads(out)["assignments"])
     except:

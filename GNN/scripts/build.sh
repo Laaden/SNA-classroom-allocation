@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export JULIA_NUM_THREADS=auto
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 tmpfile=$(mktemp "$SCRIPT_DIR/compile_trace_XXXXXX.jl")
 trap 'rm -f "$tmpfile"' EXIT

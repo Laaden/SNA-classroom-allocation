@@ -2,6 +2,7 @@ module ClusterWorker
 
     using Leiden
     using JSON3
+    using Base.Threads
     import GNNGraphs: knn_graph, adjacency_matrix
     import BSON: @load
     import ArgParse: ArgParseSettings, parse_args, @add_arg_table!
@@ -20,16 +21,22 @@ module ClusterWorker
         unique_ids = sort(unique(vcat([e[1] for e in all_edges], [e[2] for e in all_edges])))
         node_to_index = Dict(id => i for (i, id) in enumerate(unique_ids))
 
-        views = map(parsed["views"]) do view
+        parsed_views = parsed["views"]
+        n = length(parsed_views)
+        views = Vector{WeightedGraph}(undef, n)
+
+        Threads.@threads for i in 1:n
+            view = parsed_views[i]
             adj = zeros(Int, length(unique_ids), length(unique_ids))
             for (src, tgt) in view["edges"]
-                i, j = node_to_index[src], node_to_index[tgt]
-                adj[i, j] = 1
-                adj[j, i] = 1
+                i_src = node_to_index[src]
+                i_tgt = node_to_index[tgt]
+                adj[i_src, i_tgt] = 1
+                adj[i_tgt, i_src] = 1
             end
             g = WeightedGraph(adj, Float32(view["weight"]), view["view_type"])
             g.graph.ndata.x = zeros(Float32, 64, size(g.graph.ndata.topo, 2))
-            g
+            views[i] = g
         end
 
         return views, unique_ids
