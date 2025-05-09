@@ -1,6 +1,6 @@
 # README
 
-[![Build GNNWorker](https://github.com/ElianHugh/SNA-classroom-allocation/actions/workflows/release.yml/badge.svg)](https://github.com/ElianHugh/SNA-classroom-allocation/actions/workflows/release.yml)
+[![Build GNNWorker](https://github.com/DannyTheSober/SNA-classroom-allocation/actions/workflows/release.yml/badge.svg)](https://github.com/DannyTheSober/SNA-classroom-allocation/actions/workflows/release.yml)
 
 Modularity is currently the target metric for GNN training.
 We have seen modularity between 0.05 to 0.3 depending on the run of the GNN -- stabilises between 0.2 and 0.4. Discriminator accuracy is typically around 0.75 to 0.85.
