@@ -1,23 +1,63 @@
 import subprocess
 import json
 import pandas as pd
+import pymongo
+import os
 
 def generate_clusters(data: str):
-    out = subprocess.run(
-        [
-            "build/GNNWorker/bin/GNNProject",
-            "--stdin",
-            "--model-path=build/GNNWorker/assets/model.bson"
-        ],
-        input = data,
-        text=True,
-        capture_output=True
-    ).stdout
-    return pd.DataFrame(json.loads(out)["assignments"])
+    try:
+        out = subprocess.run(
+            [
+                "build/GNNWorker/bin/GNNProject",
+                "--stdin",
+                "--model-path=build/GNNWorker/assets/model.bson"
+            ],
+            input = data,
+            text=True,
+            capture_output=True
+        ).stdout
+        return pd.DataFrame(json.loads(out)["assignments"])
+    except:
+        return None
 
 
-with open("scripts/test_input.json") as json_file:
-    json_data = json.load(json_file)
+def pull_adjacencies(client, db):
+    VIEW_TYPE_MAP = {
+        "Friends":      "friendship",
+        "Influential":  "influence",
+        "Feedback":     "feedback",
+        "Advice":       "advice",
+        "Disrespect":   "disrespect",
+        "School Activities": "affiliation"
+    }
+    df_raw = pd.DataFrame(list(db.sna_student_raw.find({}, {"_id": 0})))
+    colnames = df_raw.columns.tolist()
+    views = []
+    for raw_view, renamed_view in VIEW_TYPE_MAP.items():
+        src_col = f"Source {raw_view}"
+        tgt_col = f"Target {raw_view}"
 
-clusters = generate_clusters(json.dumps(json_data))
+        if src_col in colnames and tgt_col in colnames:
+            df_edges = df_raw[[src_col, tgt_col]].dropna()
+
+            edges = [
+                [int(src), int(tgt)]
+                for src, tgt in zip(df_edges[src_col], df_edges[tgt_col])
+                if pd.notna(src) and pd.notna(tgt)
+            ]
+
+            if edges:
+                views.append({
+                    "edges": edges,
+                    "weight": 1.0,
+                    "view_type": renamed_view
+                })
+    return {"views": views}
+
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://3.105.47.11:27017")
+client    = pymongo.MongoClient(MONGO_URI)
+db        = client["sna_database"]
+
+adjacency_json = pull_adjacencies(client, db)
+clusters = generate_clusters(json.dumps(adjacency_json))
 print(clusters)
