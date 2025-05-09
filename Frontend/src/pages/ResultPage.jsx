@@ -29,8 +29,8 @@ const BASE_URL = import.meta.env.MODE === "development"
     const fetchData = async () => {
       try {
         const [nodesRes, edgesRes] = await Promise.all([
-          fetch("http://3.105.47.11:8000/api/result_node_cluster"),
-          fetch("http://3.105.47.11:8000/api/result_edges_info")
+          fetch("https://3.105.47.11:8000/api/result_node_cluster"),
+          fetch("https://3.105.47.11:8000/api/result_edges_info")
         ]);
 
         if (!nodesRes.ok || !edgesRes.ok) {
