@@ -8,7 +8,9 @@ module ClusterWorker
     import Flux: normalise
     import ..Types: WeightedGraph
 
-
+    # todo, you should be able to "pin" students
+    # or should that only be outside the GNN? Maybe because the GA will try to optimise
+    # the clusters, so maybe even after that.
     function load_views_from_stdin()
         raw_json = read(stdin, String)
 
