@@ -18,7 +18,6 @@ module ClusterWorker
 
         parsed = JSON3.read(raw_json)
 
-        # all_edges = vcat([view["edges"] for view in parsed["views"]]...)
         all_edges = Iterators.flatten(view["edges"] for view in parsed["views"]) |> collect
 
         unique_ids = sort(unique(vcat([e[1] for e in all_edges], [e[2] for e in all_edges])))
@@ -31,23 +30,15 @@ module ClusterWorker
 
         Threads.@threads for i in 1:n
             view = parsed_views[i]
-            # adj = zeros(Int, length(unique_ids), length(unique_ids))
-            # for (src, tgt) in view["edges"]
-            #     i_src = node_to_index[src]
-            #     i_tgt = node_to_index[tgt]
-            #     adj[i_src, i_tgt] = 1
-            #     adj[i_tgt, i_src] = 1
-            # end
             adj = build_sparse_adj(view["edges"], node_to_index, n_nodes)
             g = WeightedGraph(adj, Float32(view["weight"]), view["view_type"])
-            g.graph.ndata.x = zeros(Float32, 64, size(g.graph.ndata.topo, 2))
             views[i] = g
         end
 
         return views, unique_ids
     end
 
-    function build_sparse_adj(edges, node_to_index, n)
+    function build_sparse_adj(edges, node_to_index::Dict{Int, Int}, n::Int)::SparseMatrixCSC{Int, Int}
         m = 2 * length(edges)
         I = Vector{Int}(undef, m)
         J = Vector{Int}(undef, m)
@@ -60,17 +51,6 @@ module ClusterWorker
             J[2k] = i
         end
         return sparse(I, J, ones(Int, m), n, n)
-
-
-        # I = Int[]
-        # J = Int[]
-        # for (src, tgt) in edges
-        #     i = node_to_index[src]
-        #     j = node_to_index[tgt]
-        #     push!(I, i); push!(J, j)
-        #     push!(I, j); push!(J, i)
-        # end
-        # return sparse(I, J, ones(Int, length(I)), n, n)
     end
 
     export main
