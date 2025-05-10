@@ -15,27 +15,36 @@ module ClusterWorker
     # the clusters, so maybe even after that.
     function load_views_from_stdin()
         raw_json = read(stdin, String)
-
         parsed = JSON3.read(raw_json)
-
-        all_edges = Iterators.flatten(view["edges"] for view in parsed["views"]) |> collect
-
-        unique_ids = sort(unique(vcat([e[1] for e in all_edges], [e[2] for e in all_edges])))
-        node_to_index = Dict(id => i for (i, id) in enumerate(unique_ids))
-
         parsed_views = parsed["views"]
-        n = length(parsed_views)
-        n_nodes = length(unique_ids)
-        views = Vector{WeightedGraph}(undef, n)
 
+        all_edges = parse_and_flatten_edges(parsed_views)
+        unique_ids, node_to_index = get_unique_ids_and_index(all_edges)
+        views = make_weighted_graphs(parsed_views, node_to_index, length(unique_ids))
+
+        return views, unique_ids
+    end
+
+    function get_unique_ids_and_index(all_edges)
+        unique_ids = unique(vcat([e[1] for e in all_edges], [e[2] for e in all_edges]))
+        node_to_index = Dict(id => i for (i, id) in enumerate(unique_ids))
+        return unique_ids, node_to_index
+    end
+
+    function parse_and_flatten_edges(parsed_views)
+        return Iterators.flatten(view["edges"] for view in parsed_views) |>
+            collect
+    end
+
+    function make_weighted_graphs(parsed_views, node_to_index, n_nodes)::Vector{WeightedGraph}
+        n = length(parsed_views)
+        views = Vector{WeightedGraph}(undef, n)
         Threads.@threads for i in 1:n
             view = parsed_views[i]
             adj = build_sparse_adj(view["edges"], node_to_index, n_nodes)
-            g = WeightedGraph(adj, Float32(view["weight"]), view["view_type"])
-            views[i] = g
+            views[i] = WeightedGraph(adj, Float32(view["weight"]), view["view_type"])
         end
-
-        return views, unique_ids
+        return views
     end
 
     function build_sparse_adj(edges, node_to_index::Dict{Int, Int}, n::Int)::SparseMatrixCSC{Int, Int}
