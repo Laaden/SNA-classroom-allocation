@@ -26,7 +26,7 @@ module ClusterWorker
     end
 
     function get_unique_ids_and_index(all_edges)
-        unique_ids = unique(vcat([e[1] for e in all_edges], [e[2] for e in all_edges]))
+        unique_ids = collect(Set((e[1] for e in all_edges)) ∪ Set((e[2] for e in all_edges)))
         node_to_index = Dict(id => i for (i, id) in enumerate(unique_ids))
         return unique_ids, node_to_index
     end
@@ -87,41 +87,33 @@ module ClusterWorker
 
         @load args["model-path"] model
 
-        # Profile.@profile begin
-            views, node_ids = load_views_from_stdin()
+        views, node_ids = load_views_from_stdin()
 
-            embeddings = model(views)
-            norm_embeddings = normalise(embeddings; dims=1)
-            n_nodes = size(norm_embeddings, 2)
-            k = max(1, min(args["k"], n_nodes - 1))
-            knn = knn_graph(norm_embeddings, k)
-            clusters = leiden(adjacency_matrix(knn), "ngrb")
+        embeddings = model(views)
+        norm_embeddings = normalise(embeddings; dims=1)
+        n_nodes = size(norm_embeddings, 2)
+        k = max(1, min(args["k"], n_nodes - 1))
+        knn = knn_graph(norm_embeddings, k)
+        clusters = leiden(adjacency_matrix(knn), "ngrb")
 
-            JSON3.write(stdout, Dict(
-                "assignments" => [
-                    Dict("id" => node_id, "cluster" => c)
-                    for (node_id, c) in zip(node_ids, clusters)
-                ]
-            ))
-        # end
+        JSON3.write(stdout, Dict(
+            "assignments" => [
+                Dict("id" => node_id, "cluster" => c)
+                for (node_id, c) in zip(node_ids, clusters)
+            ]
+        ))
     end
 
 
     export julia_main
     function julia_main()::Cint
-        try
-            # @info "Profiling..."
-            # Profile.init(n = 1_000_000, delay = 0.0005)
-            # Profile.clear()
+        # try
             main()
-            # open("profile_output.txt", "w") do io
-            #     Profile.print(io)
-            # end
             return 0
-        catch err
-            @error "Error: $err"
-            return 1
-        end
+        # catch err
+            # @error "Error: $err"
+            # return 1
+        # end
     end
 
     if abspath(PROGRAM_FILE) == @__FILE__
