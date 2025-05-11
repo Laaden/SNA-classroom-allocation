@@ -4,15 +4,15 @@ module Loss
 
 	Zygote.@nograd shuffle
 	export contrastive_loss
-	function contrastive_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN; τ::Float32=1f0)
+	function contrastive_loss(g::WeightedGraph, model::MultiViewGNN; τ::Float32=1f0)
 
 		# doing some DBI contrastive loss here
-		h = model(g.graph, x) |>
+		h = model(g) |>
 			model.projection_head |>
 			x -> Flux.normalise(x, dims = 1)
 
-		x_neg = x[:, shuffle(1:end)]
-		h_neg = model(g.graph, x_neg) |>
+		x_neg = g.graph.ndata.topo[:, shuffle(1:end)]
+		h_neg = model(g, x_neg) |>
 			model.projection_head |>
 			x -> Flux.normalise(x, dims = 1)
 
@@ -40,7 +40,6 @@ module Loss
   		acc = mean(preds .== Bool.(labels))
 
     	return Flux.logitbinarycrossentropy(scores, labels), acc
-
 	end
 
 	# This is adapted from a paper on modularity loss
@@ -51,10 +50,11 @@ module Loss
     # The algorithm is modified slightly because we are using polarity to
 	# decrease modularity in the case of repulsive
 	export soft_modularity_loss
-	function soft_modularity_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN)
+	function soft_modularity_loss(g::WeightedGraph, model::MultiViewGNN)
     	A = sign(g.weight[]) * g.adjacency_matrix
 		# todo see if temperature adds meaningful sharpness
-		h = Flux.softmax(model(g.graph, x) / 0.5f0; dims = 1)
+    	h = model(g) / 0.5f0 |>
+			x -> Flux.softmax(x; dims = 1)
 		indegs = Float32.(degree(g.graph, dir=:in))
 		outdegs = Float32.(degree(g.graph, dir=:out))
 		m = ne(g.graph)
@@ -70,8 +70,8 @@ module Loss
 	# This regularisation loss ensures that
 	# we don't end up with degenerate clusters
 	export cluster_balance_loss
-	function cluster_balance_loss(g::WeightedGraph, x::AbstractMatrix{Float32}, model::MultiViewGNN)
-    	h = Flux.softmax(model(g.graph, x); dims=1)
+	function cluster_balance_loss(g::WeightedGraph, model::MultiViewGNN)
+    	h = Flux.softmax(model(g); dims=1)
 		n = nv(g.graph)
 		k = infer_k(n) # this is a heuritic, need to assess
 		ratio = 1.0f0 / k
@@ -93,13 +93,13 @@ module Loss
 		total_accuracy = 0f0
 
 		for g in views
-			x = g.graph.ndata.topo
-			# g.graph.ndata.x = x
-			contrast_loss, disc_acc = contrastive_loss(g, x, model; τ=τ)
+			# view_idx = VIEW_INDEX[g.view_type]
+			# embed = model.view_embeddings(view_idx)
+			contrast_loss, disc_acc = contrastive_loss(g, model; τ=τ)
 			if (λ != 0)
-            	total_modularity_loss += soft_modularity_loss(g, x, model)
+            	total_modularity_loss += soft_modularity_loss(g, model)
 			end
-			total_balance_loss += cluster_balance_loss(g, x, model)
+			total_balance_loss += cluster_balance_loss(g, model)
 			total_contrastive_loss += contrast_loss
 			total_accuracy += disc_acc
 		end

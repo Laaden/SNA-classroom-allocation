@@ -29,7 +29,9 @@ def pull_adjacencies(client, db):
         "Feedback":     "feedback",
         "Advice":       "advice",
         "Disrespect":   "disrespect",
-        "School Activities": "affiliation"
+        # "School Activities": "affiliation"
+
+
     }
     df_raw = pd.DataFrame(list(db.sna_student_raw.find({}, {"_id": 0})))
     colnames = df_raw.columns.tolist()

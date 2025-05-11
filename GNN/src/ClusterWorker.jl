@@ -15,39 +15,39 @@ module ClusterWorker
     # the clusters, so maybe even after that.
     function load_views_from_stdin()
         raw_json = read(stdin, String)
-
         parsed = JSON3.read(raw_json)
-
-        # all_edges = vcat([view["edges"] for view in parsed["views"]]...)
-        all_edges = Iterators.flatten(view["edges"] for view in parsed["views"]) |> collect
-
-        unique_ids = sort(unique(vcat([e[1] for e in all_edges], [e[2] for e in all_edges])))
-        node_to_index = Dict(id => i for (i, id) in enumerate(unique_ids))
-
         parsed_views = parsed["views"]
-        n = length(parsed_views)
-        n_nodes = length(unique_ids)
-        views = Vector{WeightedGraph}(undef, n)
 
-        Threads.@threads for i in 1:n
-            view = parsed_views[i]
-            # adj = zeros(Int, length(unique_ids), length(unique_ids))
-            # for (src, tgt) in view["edges"]
-            #     i_src = node_to_index[src]
-            #     i_tgt = node_to_index[tgt]
-            #     adj[i_src, i_tgt] = 1
-            #     adj[i_tgt, i_src] = 1
-            # end
-            adj = build_sparse_adj(view["edges"], node_to_index, n_nodes)
-            g = WeightedGraph(adj, Float32(view["weight"]), view["view_type"])
-            g.graph.ndata.x = zeros(Float32, 64, size(g.graph.ndata.topo, 2))
-            views[i] = g
-        end
+        all_edges = parse_and_flatten_edges(parsed_views)
+        unique_ids, node_to_index = get_unique_ids_and_index(all_edges)
+        views = make_weighted_graphs(parsed_views, node_to_index, length(unique_ids))
 
         return views, unique_ids
     end
 
-    function build_sparse_adj(edges, node_to_index, n)
+    function get_unique_ids_and_index(all_edges)
+        unique_ids = collect(Set((e[1] for e in all_edges)) ∪ Set((e[2] for e in all_edges)))
+        node_to_index = Dict(id => i for (i, id) in enumerate(unique_ids))
+        return unique_ids, node_to_index
+    end
+
+    function parse_and_flatten_edges(parsed_views)
+        return Iterators.flatten(view["edges"] for view in parsed_views) |>
+            collect
+    end
+
+    function make_weighted_graphs(parsed_views, node_to_index, n_nodes)::Vector{WeightedGraph}
+        n = length(parsed_views)
+        views = Vector{WeightedGraph}(undef, n)
+        Threads.@threads for i in 1:n
+            view = parsed_views[i]
+            adj = build_sparse_adj(view["edges"], node_to_index, n_nodes)
+            views[i] = WeightedGraph(adj, Float32(view["weight"]), view["view_type"])
+        end
+        return views
+    end
+
+    function build_sparse_adj(edges, node_to_index::Dict{Int, Int}, n::Int)::SparseMatrixCSC{Int, Int}
         m = 2 * length(edges)
         I = Vector{Int}(undef, m)
         J = Vector{Int}(undef, m)
@@ -60,17 +60,6 @@ module ClusterWorker
             J[2k] = i
         end
         return sparse(I, J, ones(Int, m), n, n)
-
-
-        # I = Int[]
-        # J = Int[]
-        # for (src, tgt) in edges
-        #     i = node_to_index[src]
-        #     j = node_to_index[tgt]
-        #     push!(I, i); push!(J, j)
-        #     push!(I, j); push!(J, i)
-        # end
-        # return sparse(I, J, ones(Int, length(I)), n, n)
     end
 
     export main
@@ -98,41 +87,33 @@ module ClusterWorker
 
         @load args["model-path"] model
 
-        # Profile.@profile begin
-            views, node_ids = load_views_from_stdin()
+        views, node_ids = load_views_from_stdin()
 
-            embeddings = model(views)
-            norm_embeddings = normalise(embeddings; dims=1)
-            n_nodes = size(norm_embeddings, 2)
-            k = max(1, min(args["k"], n_nodes - 1))
-            knn = knn_graph(norm_embeddings, k)
-            clusters = leiden(adjacency_matrix(knn), "ngrb")
+        embeddings = model(views)
+        norm_embeddings = normalise(embeddings; dims=1)
+        n_nodes = size(norm_embeddings, 2)
+        k = max(1, min(args["k"], n_nodes - 1))
+        knn = knn_graph(norm_embeddings, k)
+        clusters = leiden(adjacency_matrix(knn), "ngrb")
 
-            JSON3.write(stdout, Dict(
-                "assignments" => [
-                    Dict("id" => node_id, "cluster" => c)
-                    for (node_id, c) in zip(node_ids, clusters)
-                ]
-            ))
-        # end
+        JSON3.write(stdout, Dict(
+            "assignments" => [
+                Dict("id" => node_id, "cluster" => c)
+                for (node_id, c) in zip(node_ids, clusters)
+            ]
+        ))
     end
 
 
     export julia_main
     function julia_main()::Cint
-        try
-            # @info "Profiling..."
-            # Profile.init(n = 1_000_000, delay = 0.0005)
-            # Profile.clear()
+        # try
             main()
-            # open("profile_output.txt", "w") do io
-            #     Profile.print(io)
-            # end
             return 0
-        catch err
-            @error "Error: $err"
-            return 1
-        end
+        # catch err
+            # @error "Error: $err"
+            # return 1
+        # end
     end
 
     if abspath(PROGRAM_FILE) == @__FILE__

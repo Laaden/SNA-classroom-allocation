@@ -18,16 +18,18 @@ const CLUSTERED_STUDENT_PATH = joinpath(OUTPUT_DIR, "artifacts", "clustered_stud
 graph_views, composite_graph, index_to_node = load_views_and_composite(DATA_PATH)
 
 model = MultiViewGNN(
+    # input dim
     size(graph_views[1].graph.ndata.topo, 1),
+    # output dim
     size(composite_graph, 1)
-) |> gpu
-opt = Flux.Adam(1e-3) |> gpu
+)
+opt = Flux.Adam(1e-3)
 results = hyperparameter_search(
     model,
     graph_views,
     composite_graph,
     taus=[0.1f0, 0.5f0],
-    lambdas=[0.0f0, 1.0f0, 100.0f0],
+    lambdas=[1.0f0, 100.0f0],
     gammas=[0.01f0, 0.0f0],
     epochs=500,
     n_repeats=3

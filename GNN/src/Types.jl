@@ -1,5 +1,5 @@
 module Types
-    using GraphNeuralNetworks, Graphs, Flux, StatsBase
+    using GraphNeuralNetworks, Graphs, Flux, StatsBase, Base.Threads
 
     const VIEW_NAMES = [
         "friendship", "influence", "feedback", "more_time",
@@ -25,6 +25,7 @@ module Types
         function WeightedGraph(adj_mat::AbstractMatrix{<:Integer}, weight::Float32, view_name::String)
             g = GNNGraph(adj_mat)
 
+
             # Topological node features were chosen using
             # PCA to see the explanatory power of each
             # feature.
@@ -34,16 +35,16 @@ module Types
                 local_clustering_coefficient(g) |> safe_zscore,
                 indegree_centrality(g) |> safe_zscore,
                 outdegree_centrality(g) |> safe_zscore,
-                betweenness_centrality(g) |> safe_zscore,
-                pagerank(g) |> safe_zscore,
+                # betweenness_centrality(g) |> safe_zscore,
+                # pagerank(g) |> safe_zscore,
                 triangles(g) |> safe_zscore,
-                eigenvector_centrality(g) |> safe_zscore
+                # eigenvector_centrality(g) |> safe_zscore
             ))'
 
-            view_idx = VIEW_INDEX[view_name]
-            view_feat = zeros(Float32, NUM_VIEWS, size(g, 1))
-            view_feat[view_idx, :] .= 1f0
-            g.ndata.topo = vcat(g.ndata.topo, view_feat)
+            # view_idx = VIEW_INDEX[view_name]
+            # view_feat = zeros(Float32, NUM_VIEWS, size(g, 1))
+            # view_feat[view_idx, :] .= 1f0
+            # g.ndata.topo = vcat(g.ndata.topo, view_feat)
 
             return new(g, Ref(weight), Float32.(adj_mat), view_name)
         end
@@ -119,6 +120,7 @@ module Types
         projection_head::Chain
         # Used for DGI contrastive loss
         discriminator::Flux.Bilinear
+        view_embeddings::Flux.Embedding
     end
 
     Flux.@layer MultiViewGNN
@@ -127,13 +129,17 @@ module Types
     function MultiViewGNN(input_dim::Int64, output_dim::Int64)
         hidden_dim = 32
 
+         # per-view learned embeddings
+        embeddings = Flux.Embedding(NUM_VIEWS => input_dim)
+
+        input_dim = input_dim * 2
+
         encoder = Chain(
             Dense(input_dim, 64, relu),
             Dropout(0.2),
             Dense(64, 32, relu),
             LayerNorm(32)
         )
-
 
         layers = (
             conv1 = SAGEConv(hidden_dim => output_dim),
@@ -147,7 +153,7 @@ module Types
 
         disc = Flux.Bilinear((output_dim, output_dim) => 1)
 
-        return MultiViewGNN(encoder, layers, proj_head, disc)
+        return MultiViewGNN(encoder, layers, proj_head, disc, embeddings)
     end
 
     # Forward pass for the GNN, acting on `g` graph and `x` node embedding matrix
@@ -160,7 +166,30 @@ module Types
     end
 
     # Convenience wrappers for doing a forward pass against a weighted graph structs/vectors
-    (mvgnn:: MultiViewGNN)(wg::WeightedGraph) = mvgnn(wg.graph, wg.graph.ndata.topo)
-    (mvgnn::MultiViewGNN)(views::Vector{WeightedGraph}) = sum(g.weight[] * mvgnn(g) for g in views)
+    function(mvgnn::MultiViewGNN)(wg::WeightedGraph)
+        view_idx = VIEW_INDEX[wg.view_type]
+        embed = repeat(mvgnn.view_embeddings(view_idx), 1, nv(wg.graph))
+        x =  vcat(wg.graph.ndata.topo, embed)
+        mvgnn(wg.graph, x)
+    end
+
+    function(mvgnn::MultiViewGNN)(wg::WeightedGraph, x::AbstractMatrix{Float32})
+        # todo this seems messy and repetitive
+        view_idx = VIEW_INDEX[wg.view_type]
+        embed = repeat(mvgnn.view_embeddings(view_idx), 1, nv(wg.graph))
+        x = vcat(x, embed)
+        mvgnn(wg.graph, x)
+    end
+
+    function(mvgnn::MultiViewGNN)(views::Vector{WeightedGraph})
+        # sum(g.weight[] * mvgnn(g) for g in views)
+
+        # # todo, compare speed
+        res = Vector{Matrix{Float32}}(undef, length(views))
+        Threads.@threads for i in eachindex(views)
+            res[i] = views[i].weight[] * mvgnn(views[i])
+        end
+        sum(res)
+    end
 
 end
