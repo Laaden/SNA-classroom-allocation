@@ -222,3 +222,19 @@ def generate(request: Request, user_prompt: str = Form(...)):
         "collection": collection_name
     })
 
+class ClusterWeights:
+    friendship: int
+    influence: int
+    feedback: int
+    advice: int
+    disrespect: int
+    affiliation: int
+
+@app.post("/update_weights/")
+def update_weights(weights: ClusterWeights):
+    col = db.sna_weights
+    first_doc = col.find_one()
+    query = {"_id": first_doc["_id"]}
+    col.update_one(query, {"$set": weights})
+    return
+

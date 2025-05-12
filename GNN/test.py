@@ -22,7 +22,7 @@ def generate_clusters(data: str):
         return None
 
 
-def pull_adjacencies(client, db):
+def pull_adjacencies(db):
     VIEW_TYPE_MAP = {
         "Friends":      "friendship",
         "Influential":  "influence",
@@ -61,6 +61,6 @@ MONGO_URI = os.environ.get("MONGO_URI", "mongodb://3.105.47.11:27017")
 client    = pymongo.MongoClient(MONGO_URI)
 db        = client["sna_database"]
 
-adjacency_json = pull_adjacencies(client, db)
+adjacency_json = pull_adjacencies(db)
 clusters = generate_clusters(json.dumps(adjacency_json))
 print(clusters)
