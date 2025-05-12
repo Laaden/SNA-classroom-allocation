@@ -52,8 +52,7 @@ module Loss
 	export soft_modularity_loss
 	function soft_modularity_loss(g::WeightedGraph, model::MultiViewGNN)
     	A = sign(g.weight[]) * g.adjacency_matrix
-		# todo see if temperature adds meaningful sharpness
-    	h = model(g) / 0.5f0 |>
+    	h = model(g) |>
 			x -> Flux.softmax(x; dims = 1)
 		indegs = Float32.(degree(g.graph, dir=:in))
 		outdegs = Float32.(degree(g.graph, dir=:out))
@@ -73,7 +72,7 @@ module Loss
 	function cluster_balance_loss(g::WeightedGraph, model::MultiViewGNN)
     	h = Flux.softmax(model(g); dims=1)
 		n = nv(g.graph)
-		k = infer_k(n) # this is a heuritic, need to assess
+		k = infer_k(n) # this is a heuritic
 		ratio = 1.0f0 / k
 		cluster_sums = sum(h, dims = 2) / n
 		return sum((cluster_sums .- ratio).^2)
@@ -93,8 +92,6 @@ module Loss
 		total_accuracy = 0f0
 
 		for g in views
-			# view_idx = VIEW_INDEX[g.view_type]
-			# embed = model.view_embeddings(view_idx)
 			contrast_loss, disc_acc = contrastive_loss(g, model; τ=τ)
 			if (λ != 0)
             	total_modularity_loss += soft_modularity_loss(g, model)

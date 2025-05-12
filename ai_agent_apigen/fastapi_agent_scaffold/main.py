@@ -238,3 +238,4 @@ def update_weights(weights: ClusterWeights):
     col.update_one(query, {"$set": weights})
     return
 
+

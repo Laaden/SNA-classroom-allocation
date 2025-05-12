@@ -24,8 +24,6 @@ module Types
 
         function WeightedGraph(adj_mat::AbstractMatrix{<:Integer}, weight::Float32, view_name::String)
             g = GNNGraph(adj_mat)
-
-
             # Topological node features were chosen using
             # PCA to see the explanatory power of each
             # feature.
@@ -40,12 +38,6 @@ module Types
                 triangles(g) |> safe_zscore,
                 # eigenvector_centrality(g) |> safe_zscore
             ))'
-
-            # view_idx = VIEW_INDEX[view_name]
-            # view_feat = zeros(Float32, NUM_VIEWS, size(g, 1))
-            # view_feat[view_idx, :] .= 1f0
-            # g.ndata.topo = vcat(g.ndata.topo, view_feat)
-
             return new(g, Ref(weight), Float32.(adj_mat), view_name)
         end
 
@@ -182,9 +174,6 @@ module Types
     end
 
     function(mvgnn::MultiViewGNN)(views::Vector{WeightedGraph})
-        # sum(g.weight[] * mvgnn(g) for g in views)
-
-        # # todo, compare speed
         res = Vector{Matrix{Float32}}(undef, length(views))
         Threads.@threads for i in eachindex(views)
             res[i] = views[i].weight[] * mvgnn(views[i])
