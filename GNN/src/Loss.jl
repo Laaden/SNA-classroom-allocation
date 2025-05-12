@@ -92,11 +92,12 @@ module Loss
 		total_accuracy = 0f0
 
 		for g in views
-			contrast_loss, disc_acc = contrastive_loss(g, model; τ=τ)
+			subgraph = sample_weighted_subgraph(g)
+			contrast_loss, disc_acc = contrastive_loss(subgraph, model; τ=τ)
 			if (λ != 0)
-            	total_modularity_loss += soft_modularity_loss(g, model)
+            	total_modularity_loss += soft_modularity_loss(subgraph, model)
 			end
-			total_balance_loss += cluster_balance_loss(g, model)
+			total_balance_loss += cluster_balance_loss(subgraph, model)
 			total_contrastive_loss += contrast_loss
 			total_accuracy += disc_acc
 		end

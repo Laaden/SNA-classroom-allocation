@@ -1,5 +1,5 @@
 module Types
-    using GraphNeuralNetworks, Graphs, Flux, StatsBase, Base.Threads
+    using GraphNeuralNetworks, Graphs, Flux, StatsBase, Base.Threads, Zygote
 
     const VIEW_NAMES = [
         "friendship", "influence", "feedback", "more_time",
@@ -46,8 +46,9 @@ module Types
         end
     end
 
-    export sample_weighted_graph
-    function sample_weighted_graph(wg::WeightedGraph, node_frac = 0.8f0)
+
+    export sample_weighted_subgraph
+    function sample_weighted_subgraph(wg::WeightedGraph, node_frac = 0.8f0)
         nodes = (rand(Bool, nv(wg.graph)) .< node_frac) |>
             findall
         subg = induced_subgraph(wg.graph, nodes)
@@ -55,6 +56,9 @@ module Types
         # check check this, it might be brittle to the secondary constructor not using ref?
         WeightedGraph(adj, wg.weight[], wg.view_type)
     end
+
+    Zygote.@nograd sample_weighted_subgraph
+
 
     # Adapt.@adapt_structure WeightedGraph
 
