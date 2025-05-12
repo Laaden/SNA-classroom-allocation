@@ -28,8 +28,8 @@ results = hyperparameter_search(
     model,
     graph_views,
     composite_graph,
-    taus=[0.1f0, 0.5f0],
-    lambdas=[1.0f0, 100.0f0],
+    taus=[0.1f0, 0.5f0, 1.0f0],
+    lambdas=[0.5f0, 1.0f0, 10.0f0, 100.0f0],
     gammas=[0.01f0, 0.0f0],
     epochs=500,
     n_repeats=3

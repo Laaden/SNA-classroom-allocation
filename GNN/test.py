@@ -21,7 +21,6 @@ def generate_clusters(data: str):
     except:
         return None
 
-
 def pull_adjacencies(db):
     VIEW_TYPE_MAP = {
         "Friends":      "friendship",

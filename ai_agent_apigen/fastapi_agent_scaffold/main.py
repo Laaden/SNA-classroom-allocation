@@ -100,7 +100,7 @@
 #         "collection": collection_name
 #     })
 # --- main.py ---
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, HTTPException, Request, Form, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -222,6 +222,9 @@ def generate(request: Request, user_prompt: str = Form(...)):
         "collection": collection_name
     })
 
+
+# ~~~~~~~~~~ Cluster Generation ~~~~~~~~~~~~~~~ #
+
 class ClusterWeights:
     friendship: int
     influence: int
@@ -230,12 +233,17 @@ class ClusterWeights:
     disrespect: int
     affiliation: int
 
-@app.post("/update_weights/")
+@app.post("/update_weights/", status_code=status.HTTP_204_NO_CONTENT)
 def update_weights(weights: ClusterWeights):
     col = db.sna_weights
     first_doc = col.find_one()
     query = {"_id": first_doc["_id"]}
-    col.update_one(query, {"$set": weights})
-    return
+    col.update_one(query, {"$set": weights.dict()})
+    return None
 
-
+@app.get("/get_weights/", response_model=ClusterWeights)
+def get_weights() -> ClusterWeights:
+    doc = db.sna_weights.find_one({}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="No weights config found")
+    return doc
