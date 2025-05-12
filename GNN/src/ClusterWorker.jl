@@ -107,13 +107,13 @@ module ClusterWorker
 
     export julia_main
     function julia_main()::Cint
-        # try
+        try
             main()
             return 0
-        # catch err
-            # @error "Error: $err"
-            # return 1
-        # end
+        catch err
+            @error "Error: $err"
+            return 1
+        end
     end
 
     if abspath(PROGRAM_FILE) == @__FILE__
