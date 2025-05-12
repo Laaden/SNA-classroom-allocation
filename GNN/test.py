@@ -30,11 +30,11 @@ def pull_adjacencies(client, db):
         "Advice":       "advice",
         "Disrespect":   "disrespect",
         # "School Activities": "affiliation"
-
-
     }
     df_raw = pd.DataFrame(list(db.sna_student_raw.find({}, {"_id": 0})))
     colnames = df_raw.columns.tolist()
+    df_weights = pd.DataFrame(list(db.sna_weights.find({}, {"_id": 0})))
+
     views = []
     for raw_view, renamed_view in VIEW_TYPE_MAP.items():
         src_col = f"Source {raw_view}"
@@ -52,7 +52,7 @@ def pull_adjacencies(client, db):
             if edges:
                 views.append({
                     "edges": edges,
-                    "weight": 1.0,
+                    "weight": df_weights[renamed_view][0].item(),
                     "view_type": renamed_view
                 })
     return {"views": views}

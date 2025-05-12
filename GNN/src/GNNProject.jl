@@ -6,7 +6,6 @@ module GNNProject
     include("Loss.jl")
     include("ModelEvaluation.jl")
     include("Training.jl")
-    include("Plotting.jl")
     include("ClusterWorker.jl")
 
     @reexport using .Types
@@ -14,7 +13,6 @@ module GNNProject
     @reexport using .Loss
     @reexport using .ModelEvaluation
     @reexport using .ModelTraining
-    @reexport using .Plotting
     @reexport using .ClusterWorker
 
 end
