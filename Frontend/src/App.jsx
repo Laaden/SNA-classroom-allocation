@@ -2,16 +2,20 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import HomePage     from "./pages/HomePage";
 import ResultPage   from "./pages/ResultPage";
 import WeightsPage  from "./pages/WeightsPage";
+import AIQueryPage from './pages/AIQueryPage';
 
-export default function App() {
+function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
-        <Route path="/"          element={<HomePage />} />
-        <Route path="/result"    element={<ResultPage />} />   {/* dashboard */}
-        <Route path="/weights"   element={<WeightsPage />} />  {/* allocation */}
-        <Route path="*"          element={<Navigate to="/" />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/result" element={<ResultPage />} />
+        <Route path="/weights" element={<WeightsPage />} />
+        <Route path="/ai-query" element={<AIQueryPage />} /> {/* Add the new route */}
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
+
+export default App;

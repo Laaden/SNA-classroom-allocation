@@ -15,7 +15,7 @@ export default function HomePage() {
                         <li><Link to="/home">Home</Link></li>
                         <li><Link to="/result">Dashboard</Link></li>
                         <li><Link to="/weights">Allocation</Link></li>
-                        <li><a href="contact.html">Contact</a></li>
+                        <li><Link to="/ai-query">AI Query</Link></li>
                     </ul>
                 </nav>
             </div>
