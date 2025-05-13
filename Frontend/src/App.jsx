@@ -6,7 +6,7 @@ import AIQueryPage from './pages/AIQueryPage';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/SNA-classroom-allocation">
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<HomePage />} />
