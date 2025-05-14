@@ -45,7 +45,7 @@ module Loss
 	# This is adapted from a paper on modularity loss
 	# "UNSUPERVISED COMMUNITY DETECTION WITH MODULARITY-BASED ATTENTION MODEL"
 	#  by Ivan Lobov, Sergey Ivanov
-	# https://github.com/Ivanopolo/modnet
+	# https://github.  com/Ivanopolo/modnet
 	# It *is* differentiable
     # The algorithm is modified slightly because we are using polarity to
 	# decrease modularity in the case of repulsive
@@ -53,15 +53,14 @@ module Loss
 	function soft_modularity_loss(g::WeightedGraph, model::MultiViewGNN)
     	A = sign(g.weight[]) * g.adjacency_matrix
     	h = model(g) |>
-			x -> Flux.softmax(x; dims = 1)
+			x -> Flux.softmax(x / 0.5f0; dims = 1)
 		indegs = Float32.(degree(g.graph, dir=:in))
 		outdegs = Float32.(degree(g.graph, dir=:out))
 		m = ne(g.graph)
 
     	expected = (outdegs * indegs') / m
 		B = A - expected
-
-		soft_mod = sum(diag(h * B * h'))
+		soft_mod = sum((h * B) .* h)
 		return -soft_mod / m
 	end
 
@@ -92,7 +91,8 @@ module Loss
 		total_accuracy = 0f0
 
 		for g in views
-			subgraph = sample_weighted_subgraph(g)
+			# subgraph = sample_weighted_subgraph(g)
+			subgraph = g
 			contrast_loss, disc_acc = contrastive_loss(subgraph, model; τ=τ)
 			if (λ != 0)
             	total_modularity_loss += soft_modularity_loss(subgraph, model)

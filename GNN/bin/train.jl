@@ -29,7 +29,7 @@ results = hyperparameter_search(
     graph_views,
     composite_graph,
     taus=[0.1f0, 0.5f0, 1.0f0],
-    lambdas=[0.5f0, 1.0f0, 10.0f0],
+    lambdas=[10.0f0, 10.0f0],
     gammas=[0.01f0, 0.1f0],
     epochs=500,
     n_repeats=3
@@ -48,7 +48,7 @@ trained_model = train_model(
     epochs=500
 )
 
-output = model(graph_views) |> cpu
+output = model(graph_views)
 
 norm_embeddings = Flux.normalise(output; dims=1)
 knn = knn_graph(norm_embeddings, Int64(round(sqrt(size(output, 2)))))

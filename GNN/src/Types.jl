@@ -15,6 +15,11 @@ module Types
         return x_std ≈ 0 ? fill(0.0f0, length(x)) : Float32.((x .- mean(x)) ./ (x_std + eps()))
     end
 
+    function normalise_across_graph(x::AbstractMatrix{<:Real})
+        return (x .- mean(x; dims=2)) ./ (std(x; dims=2) .+ eps())
+    end
+
+
     export WeightedGraph
     struct WeightedGraph
         graph::GNNGraph
@@ -29,21 +34,62 @@ module Types
             # feature.
             # i.e. fit(PCA, features; maxdim = n_features)
             #
-            g.ndata.topo = Float32.(hcat(
-                local_clustering_coefficient(g) |> safe_zscore,
-                indegree_centrality(g) |> safe_zscore,
-                outdegree_centrality(g) |> safe_zscore,
-                # betweenness_centrality(g) |> safe_zscore,
-                # pagerank(g) |> safe_zscore,
-                triangles(g) |> safe_zscore,
-                # eigenvector_centrality(g) |> safe_zscore
-            ))'
+            topo_features = vcat(
+                get_topological_features(g),
+                get_egonet_topological_features(g)
+            )
+            replace!(topo_features, NaN => 0.0f0)
+            replace!(topo_features, Inf => 0.0f0)
+            g.ndata.topo = topo_features
+
             return new(g, Ref(weight), Float32.(adj_mat), view_name)
         end
 
         function WeightedGraph(graph::GNNGraph, weight::Ref{Float32}, adjacency::AbstractMatrix{<:Real}, view_name::String)
             return new(graph, weight, adjacency, view_name)
         end
+    end
+
+    function get_topological_features(g::AbstractGraph)
+        Float32.(hcat(
+            local_clustering_coefficient(g) |> safe_zscore,
+            indegree_centrality(g) |> safe_zscore,
+            outdegree_centrality(g) |> safe_zscore,
+            # betweenness_centrality(g) |> safe_zscore,
+            pagerank(g) |> safe_zscore,
+            # triangles(g) |> safe_zscore,
+            # eigenvector_centrality(g) |> safe_zscore
+        ))'
+    end
+
+    function get_egonet_topological_features(g)
+        egonets = [induced_subgraph(g, neighborhood(g, v, 1)) for v in 1:nv(g)]
+
+        ego_node_features = [
+            begin
+                nodes = neighborhood(g, ego_idx, 1)
+                idx = findfirst(==(ego_idx), nodes)
+
+
+                degs = degree(egonet)
+                neighbour_degrees = deleteat!(copy(degs), idx)
+
+                features = [
+                    ne(egonet),
+                    degs[idx],
+                    density(egonet),
+                    local_clustering_coefficient(egonet)[idx],
+                    mean(neighbour_degrees)
+                ]
+            end for (ego_idx, egonet) in enumerate(egonets)
+        ]
+
+        egonet_mtx = hcat(ego_node_features...)
+        replace!(egonet_mtx, NaN => 0.0f0)
+        replace!(egonet_mtx, Inf => 0.0f0)
+        egonet_mtx = normalise_across_graph(egonet_mtx)
+
+        return Float32.(egonet_mtx)
     end
 
 
