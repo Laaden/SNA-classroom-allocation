@@ -25,31 +25,31 @@
 
 ## Hyperparameters
 
-- γ = 0.1
-- λ = 10.0
+- γ = 1.0
+- λ = 1.0
 - τ = 1.0
-- epochs = 500
+- epochs = 1000
 
 ## Cluster Quality
 
-- var_norm = 393.8875
+- var_norm = 303076.2
 - quality:
-  - modularity = 0.0816997802262637
-  - silhouettes = 0.14745109
-  - conductance = 0.8328282428325535
+  - modularity = 0.11095948832702814
+  - silhouettes = 0.31575137
+  - conductance = 0.8533857334294166
 - n_clusters = 6
-- mean_norm = 24.833055
+- mean_norm = 2173.9697
 
 ## Intra-cluster Composite Rate
 
-- Negative: 0.2236842105263158
-- Positive: 0.324435318275154
+- Negative: 0.14473684210526316
+- Positive: 0.34784394250513345
 
 ## Per-view Cluster Rate
 
-- influence = 0.32608695652173914
-- friendship = 0.30196749358426006
-- more_time = 0.34146341463414637
-- advice = 0.35149863760217986
-- disrespect = 0.2236842105263158
-- feedback = 0.36619718309859156
+- influence = 0.35144927536231885
+- friendship = 0.32934131736526945
+- more_time = 0.33658536585365856
+- advice = 0.3978201634877384
+- disrespect = 0.14473684210526316
+- feedback = 0.38028169014084506

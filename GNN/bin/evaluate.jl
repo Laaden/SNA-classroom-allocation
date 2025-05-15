@@ -13,7 +13,7 @@ include("Plotting.jl")
 const OUTPUT_DIR = joinpath(@__DIR__, "..", "output")
 const LOGS_DIR = joinpath(OUTPUT_DIR, "logs")
 
-@load joinpath(OUTPUT_DIR, "artifacts", "results.bson") sweep_results
+# @load joinpath(OUTPUT_DIR, "artifacts", "results.bson") sweep_results
 @load joinpath(OUTPUT_DIR, "artifacts", "embeddings.bson") embeddings
 @load joinpath(OUTPUT_DIR, "artifacts", "clusters.bson") clusters
 @load joinpath(OUTPUT_DIR, "artifacts", "composite_graph.bson") composite_graph
@@ -25,16 +25,16 @@ if !ispath(LOGS_DIR)
 end
 
 # ~~ Global Metric Plots ~~ #
-accuracy_plot = Plotting.plot_metric(sweep_results, :accuracy)
+accuracy_plot = Plotting.plot_metric([trained_model], :accuracy)
 
-sweep_metrics = plot(
-    Plotting.plot_metric(sweep_results, :modularity),
-    Plotting.plot_metric(sweep_results, :silhouette),
-    Plotting.plot_metric(sweep_results, :conductance),
-    layout=(3, 1),
-    link=:x,
-    xlabel="Epoch"
-)
+# sweep_metrics = plot(
+#     Plotting.plot_metric(sweep_results, :modularity),
+#     Plotting.plot_metric(sweep_results, :silhouette),
+#     Plotting.plot_metric(sweep_results, :conductance),
+#     layout=(3, 1),
+#     link=:x,
+#     xlabel="Epoch"
+# )
 
 # ~~ Per-model Plot ~~ #
 loss_composition_plot = Plotting.plot_loss_composition(trained_model)
@@ -68,14 +68,14 @@ model_evaluation = model_summary(
         λ=trained_model.λ,
         τ=trained_model.τ,
         γ=trained_model.γ,
-        epochs=500
+        epochs=1000
     ),
     ["friendship", "influence", "feedback", "more_time", "advice", "disrespect", "affiliation"]
 )
 
 savefig(accuracy_plot, joinpath(LOGS_DIR, "accuracy.png"))
 savefig(model_metrics, joinpath(LOGS_DIR, "model_metrics.png"))
-savefig(sweep_metrics, joinpath(LOGS_DIR, "sweep.png"))
+# savefig(sweep_metrics, joinpath(LOGS_DIR, "sweep.png"))
 savefig(loss_composition_plot, joinpath(LOGS_DIR, "loss_composition.png"))
 savefig(embedding_plot, joinpath(LOGS_DIR, "embeddings.png"))
 # CM.save(joinpath(LOGS_DIR, "network.png"), network)

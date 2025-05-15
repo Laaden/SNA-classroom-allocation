@@ -24,28 +24,28 @@ model = MultiViewGNN(
     size(composite_graph, 1)
 )
 opt = Flux.Adam(1e-3)
-results = hyperparameter_search(
-    model,
-    graph_views,
-    composite_graph,
-    taus=[0.1f0, 0.5f0, 1.0f0],
-    lambdas=[10.0f0, 10.0f0],
-    gammas=[0.01f0, 0.1f0],
-    epochs=500,
-    n_repeats=3
-)
+# results = hyperparameter_search(
+#     model,
+#     graph_views,
+#     composite_graph,
+#     taus=[0.1f0, 0.5f0, 1.0f0],
+#     lambdas=[10.0f0, 10.0f0],
+#     gammas=[0.01f0, 0.1f0],
+#     epochs=500,
+#     n_repeats=3
+# )
 
-best_parameters = select_best_result(results)
+# best_parameters = select_best_result(results)
 trained_model = train_model(
     model,
     opt,
     graph_views,
     composite_graph;
-    λ=best_parameters.λ,
-    τ=best_parameters.τ,
-    γ=best_parameters.γ,
+    λ=1.0f0,#best_parameters.λ,
+    τ=1.0f0, #best_parameters.τ,
+    γ=1.0f0,#best_parameters.γ,
     verbose=true,
-    epochs=500
+    epochs=1000
 )
 
 output = model(graph_views)
@@ -63,7 +63,7 @@ clustered_students = DataFrame(
 
 BSON.@save TRAIN_RESULT_PATH trained_model = trained_model
 BSON.@save MODEL_PATH model = cpu(trained_model.model)
-BSON.@save RESULTS_PATH sweep_results = cpu(results)
+# BSON.@save RESULTS_PATH sweep_results = cpu(results)
 BSON.@save EMBEDDING_PATH embeddings = cpu(output)
 BSON.@save CLUSTERS_PATH clusters = cpu(clusters)
 BSON.@save VIEWS_PATH views = cpu(graph_views)

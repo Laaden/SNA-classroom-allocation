@@ -34,8 +34,10 @@ def pull_adjacencies(db):
     colnames = df_raw.columns.tolist()
     df_weights = pd.DataFrame(list(db.sna_weights.find({}, {"_id": 0})))
 
+
     views = []
     for raw_view, renamed_view in VIEW_TYPE_MAP.items():
+
         src_col = f"Source {raw_view}"
         tgt_col = f"Target {raw_view}"
 

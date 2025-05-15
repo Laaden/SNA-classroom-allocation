@@ -163,6 +163,10 @@ module Types
         # Used for DGI contrastive loss
         discriminator::Flux.Bilinear
         view_embeddings::Flux.Embedding
+
+        logσ_c::Vector{Float32}
+        logσ_m::Vector{Float32}
+        logσ_b::Vector{Float32}
     end
 
     Flux.@layer MultiViewGNN
@@ -195,7 +199,7 @@ module Types
 
         disc = Flux.Bilinear((output_dim, output_dim) => 1)
 
-        return MultiViewGNN(encoder, layers, proj_head, disc, embeddings)
+        return MultiViewGNN(encoder, layers, proj_head, disc, embeddings, [0.0f0], [-2.0f0], [0.0f0])
     end
 
     # Forward pass for the GNN, acting on `g` graph and `x` node embedding matrix

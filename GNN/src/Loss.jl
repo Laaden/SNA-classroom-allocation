@@ -52,8 +52,9 @@ module Loss
 	export soft_modularity_loss
 	function soft_modularity_loss(g::WeightedGraph, model::MultiViewGNN)
     	A = sign(g.weight[]) * g.adjacency_matrix
-    	h = model(g) |>
-			x -> Flux.softmax(x / 0.5f0; dims = 1)
+    	# todo, i removed temperature
+		h = model(g) |>
+			x -> Flux.softmax(x; dims = 1)
 		indegs = Float32.(degree(g.graph, dir=:in))
 		outdegs = Float32.(degree(g.graph, dir=:out))
 		m = ne(g.graph)
@@ -112,6 +113,34 @@ module Loss
 			:balance_loss => total_balance_loss,
 			:acc => total_accuracy
 		))
+	end
+
+	export multitask_loss
+	function multitask_loss(model::MultiViewGNN, views::Vector{WeightedGraph})
+		Lc, Lm, Lb, Acc = compute_task_losses(model, views, 1.0f0)
+		loss_c = 0.5f0 * exp(-2f0*model.logσ_c[1]) * Lc + model.logσ_c[1]
+		loss_m = 0.5f0 * exp(-2f0*model.logσ_m[1]) * Lm + model.logσ_m[1]
+		loss_b = 0.5f0 * exp(-2f0*model.logσ_b[1]) * Lb + model.logσ_b[1]
+		return loss_c + loss_m + loss_b, Acc
+	end
+
+	export compute_task_losses
+	function compute_task_losses(model::MultiViewGNN, views::Vector{WeightedGraph}, τ::Float32)
+		Lc = 0f0
+		Lm = 0f0
+		Lb = 0f0
+		Acc = 0f0
+		for g in views
+        	lc, acc = contrastive_loss(g, model, τ=τ)
+			lm      = soft_modularity_loss(g, model)
+			lb      = cluster_balance_loss(g, model)
+
+			Lc  += lc
+			Lm  += lm
+			Lb  += lb
+			Acc += acc
+		end
+		return Lc, Lm, Lb, Acc
 	end
 
 end

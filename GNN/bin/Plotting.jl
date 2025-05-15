@@ -1,6 +1,6 @@
 module Plotting
 
-    using Plots, GNNGraphs, Graphs, Colors
+    using Plots, GNNGraphs, Graphs, Colors, Statistics
     using MultivariateStats, UMAP, GraphMakie, NetworkLayout
     import CairoMakie as CM
     using GNNProject
@@ -18,17 +18,30 @@ module Plotting
         for (rank, idx) in enumerate(sorted_indices)
             r = results[idx]
             r_colour = get_colour_from_params(colours, r.λ, r.τ, r.γ)
-            values = getfield(r.logs, metric)
-            label = rank <= 2 ? "λ $(r.λ), τ $(r.τ), γ $(r.γ)" : false
             epoch = metric == :accuracy ? 1 : 10
+            y = getfield(r.logs, metric)
+            x = collect(1:length(y)) .* epoch
+            label = rank <= 2 ? "λ $(r.λ), τ $(r.τ), γ $(r.γ)" : false
 
             plot!(
-                collect(1:length(values)) .* epoch,
-                values,
+                x,
+                y,
                 color = r_colour,
-                label=label,
+                # label=label,
                 alpha= rank <= 3 ? 1 : 0.15,
                 lw = rank <= 3 ? 3 : 1.5
+            )
+
+            m = cov(x, y) / var(x)
+            b = mean(y) - m * mean(x)
+            yfit = m .* x .+ b
+
+            plot!(
+                x, yfit;
+                color   = r_colour,
+                lw      = 2,
+                ls      = :dash,
+                alpha   = 0.7,
             )
         end
         title!(titlecase(string(metric)) * " by Epoch")
@@ -53,7 +66,7 @@ module Plotting
         )
         xlabel!("Epoch")
         ylabel!("Loss")
-        annotate!((0.35, 0.80), "λ = $(result.λ), τ = $(result.τ), γ = $(result.γ)")
+        # annotate!((0.35, 0.80), "λ = $(result.λ), τ = $(result.τ), γ = $(result.γ)")
 
         return p
     end
