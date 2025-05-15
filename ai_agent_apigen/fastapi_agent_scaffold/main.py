@@ -1,120 +1,48 @@
-# from fastapi import FastAPI, HTTPException, Request, Form
-# from fastapi.responses import HTMLResponse
-# from fastapi.staticfiles import StaticFiles
-# from fastapi.templating import Jinja2Templates
-# from pydantic import BaseModel
-# from typing import List
-# import pymongo
-# import os
-# import math
-#
-# # --- NEW: Import LLM Agent ---
-# from llm_assistant import interpret_user_intent
-#
-# # --- CONFIGURATION ---
-# MONGO_URI = os.getenv("MONGO_URI")
-# DB_NAME = os.getenv("DB_NAME")
-#
-# # --- INIT ---
-# app = FastAPI(title="FastAPI Generator Agent")
-# app.mount("/static", StaticFiles(directory="static"), name="static")
-# templates = Jinja2Templates(directory="templates")
-#
-# # --- DATABASE CONNECTION ---
-# client = pymongo.MongoClient(MONGO_URI)
-# db = client[DB_NAME]
-#
-# # function to clean the nan values
-# def sanitize(doc):
-#     for key, value in doc.items():
-#         if isinstance(value, float) and math.isnan(value):
-#             doc[key] = None
-#     return doc
-#
-# # --- ROUTES ---
-# @app.get("/", response_class=HTMLResponse)
-# def index(request: Request):
-#     return templates.TemplateResponse("index.html", {"request": request})
-#
-# @app.get("/ClassB/test_query")
-# def test_query():
-#     data = list(db['sna_student_raw'].find({}, {"_id": 0, "Attendance": 1, "bullying": 1}))
-#     for doc in data:
-#         doc.pop('_id', None)
-#         sanitize(doc)
-#     print("Total returned:", len(data))
-#     return data
-#
-# @app.post("/generate", response_class=HTMLResponse)
-# def generate_endpoint_from_prompt(request: Request, user_prompt: str = Form(...)):
-#     # Step 1: Use AI agent to interpret user intent
-#     result = interpret_user_intent(user_prompt)  # e.g. {'table': 'products', 'fields': ['name', 'price'], 'endpoint': 'basic_info'}
-#
-#     # 🔍 Debug print
-#     print("Prompt:", user_prompt)
-#     print("LLM output:", result)
-#
-#     # Step 2: Extract details
-#     collection_name = result['table']
-#     fields_list = result['fields']
-#     endpoint_name = result['endpoint']
-#
-#     route_path = f"/{collection_name}/{endpoint_name}"
-#
-#     # Step 3: Inject endpoint dynamically
-#     @app.get(route_path)
-#     def dynamic_query():
-#         filter_query = result.get("filter", {})
-#         limit = result.get("limit") or 500
-#         print("Returned fields:", fields_list)
-#
-#         if fields_list == ["*"]:
-#             projection = None  # means return all fields
-#             print("path 1")
-#         else:
-#             projection = {field: 1 for field in fields_list}
-#             print("path 2")
-#         if projection is None:
-#             cursor = db[collection_name].find(filter_query)
-#             print("path 3")
-#         else:
-#             cursor = db[collection_name].find(filter_query, projection)
-#             print("path 4")
-#         # cursor = db[collection_name].find(filter_query, projection or {})
-#         if limit > 0:
-#             cursor = cursor.limit(limit)
-#             print("path 5")
-#
-#         data = list(cursor)
-#         for doc in data:
-#             doc.pop("_id", None)
-#             sanitize(doc)
-#
-#         print(f"Returned {len(data)} records for endpoint: {route_path}")
-#         return data
-#
-#     return templates.TemplateResponse("result.html", {
-#         "request": request,
-#         "url": route_path,
-#         "fields": fields_list,
-#         "collection": collection_name
-#     })
 # --- main.py ---
 from fastapi import FastAPI, HTTPException, Request, Form, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 import pymongo
 import os
 import math
+from fastapi import UploadFile, File, Request
+from fastapi.responses import RedirectResponse
+import pandas as pd
 from llm_assistant import generate_query_plan
+import json
 
 # Load environment variables
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME")
 
+# --- HTML Form Page ---
+# @app.get("/upload", response_class=HTMLResponse)
+# def upload_page(request: Request):
+#     return templates.TemplateResponse("upload.html", {"request": request})
+
+# --- CSV Upload Endpoint ---
+from fastapi import UploadFile, File, HTTPException
+import pandas as pd
+
+
 # --- INIT ---
 app = FastAPI(title="LLM-Driven MongoDB API")
+
+# Add CORS middleware to allow specific origins
+origins = [
+    "https://dannythesober.github.io",  # Add your frontend URL
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Allow frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -134,11 +62,141 @@ def sanitize(doc):
     return doc
 
 # --- ROUTES ---
+# get edges data
+@app.get("/api/result_edges_info")
+def get_result_edges_info():
+    try:
+        collection = db["result_edges_info"]
+        documents = list(collection.find({}, {"_id": 0}))
+        sanitized_docs = [sanitize(doc) for doc in documents]
+        return sanitized_docs
+    except Exception as e:
+        return {"error": str(e)}
+
+# trigger GNNs model
+from gnn_runner import run_gnn_pipeline
+
+@app.get("/gnn_trigger", response_class=HTMLResponse)
+async def show_trigger_page(request: Request):
+    return templates.TemplateResponse("trigger_gnn.html", {"request": request})
+
+import os
+
+print("Current working directory:", os.getcwd())
+
+@app.post("/run_gnn")
+async def run_gnn():
+    try:
+        clusters = run_gnn_pipeline()
+        if clusters is None:
+            return {"status": "error", "message": "GNN processing failed."}
+
+        # (Optional) Save to MongoDB
+        db["gnn_results"].delete_many({})
+        db["gnn_results"].insert_many(clusters.to_dict("records"))
+
+        return {"status": "success", "message": "GNN executed successfully."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+    # get nodes data
+@app.get("/api/result_node_cluster")
+def get_result_edges_info():
+    try:
+        collection = db["result_node_cluster"]
+        documents = list(collection.find({}, {"_id": 0}))
+        sanitized_docs = [sanitize(doc) for doc in documents]
+        return sanitized_docs
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/routes")
+def get_routes():
+    return [route.path for route in app.routes]
+@app.post("/upload_csv/{collection_name}")
+async def upload_csv(collection_name: str, file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        print(f"📄 Received file: {file.filename} (Size: {len(contents)} bytes)")
+
+        df = pd.read_csv(pd.io.common.BytesIO(contents))
+        print("🧮 DataFrame loaded:")
+        print(df.head())
+
+        # Replace NaN with None safely
+        records = df.where(pd.notnull(df), None).to_dict(orient="records")
+        print(f"📦 Total records parsed: {len(records)}")
+
+        result = db[collection_name].insert_many(records)
+        print(f"✅ Inserted {len(result.inserted_ids)} documents into '{collection_name}'")
+
+        return {"status": "success", "inserted": len(result.inserted_ids)}
+    except Exception as e:
+        print("❌ Upload error:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+# update weights factor
+@app.get("/weights", response_class=HTMLResponse)
+async def get_weights_form(request: Request):
+    return templates.TemplateResponse("weights.html", {"request": request})
+
+
+@app.post("/update_weights")
+async def update_weights(
+        friendship: int = Form(...),
+        influence: int = Form(...),
+        feedback: int = Form(...),
+        advice: int = Form(...),
+        disrespect: int = Form(...),
+        affiliation: int = Form(...)
+):
+    try:
+        db["sna_weights"].delete_many({})  # Optional: clear old data
+        db["sna_weights"].insert_one({
+            "friendship": friendship,
+            "influence": influence,
+            "feedback": feedback,
+            "advice": advice,
+            "disrespect": disrespect,
+            "affiliation": affiliation
+        })
+        return {"status": "success", "message": "Weights updated."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+# get all edges
+@app.get("/api/edges")
+def get_all_edges():
+    try:
+        documents = list(collection.find())
+        return JSONResponse(content=dumps(documents), media_type="application/json")
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/upload_json/{collection_name}")
+async def upload_json(collection_name: str, file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        data = json.loads(contents.decode("utf-8"))
+
+        # Ensure it's a list of records
+        if isinstance(data, dict):
+            data = [data]
+        elif not isinstance(data, list):
+            raise ValueError("JSON file must contain a list or a single JSON object.")
+
+        result = db[collection_name].insert_many(data)
+        return {"status": "success", "inserted": len(result.inserted_ids)}
+    except Exception as e:
+        print("❌ Upload JSON error:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+# integrate code with the AI agent, the ai agent use this route
 @app.post("/generate", response_class=HTMLResponse)
 def generate(request: Request, user_prompt: str = Form(...)):
     # Get query plan from LLM

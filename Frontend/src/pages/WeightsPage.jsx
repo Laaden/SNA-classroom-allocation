@@ -41,7 +41,7 @@ export default function WeightsPage() {
     
       try {
         // Using the full URL instead of relative URL to avoid routing issues
-        const response = await fetch(`http://3.105.47.11:8000/upload_csv/${collectionName}`, {
+        const response = await fetch(`https://3.105.47.11:8000/upload_csv/${collectionName}`, {
           method: "POST",
           body: formData
         });
