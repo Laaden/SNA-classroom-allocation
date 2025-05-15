@@ -32,24 +32,24 @@
 
 ## Cluster Quality
 
-- var_norm = 240.06421
+- var_norm = 252.81978
 - quality:
-  - modularity = 0.14481815654291172
-  - silhouettes = 0.18537903
-  - conductance = 0.790041974964839
-- n_clusters = 5
-- mean_norm = 19.184484
+  - modularity = 0.13987249412025557
+  - silhouettes = 0.1685956
+  - conductance = 0.7899682557099461
+- n_clusters = 7
+- mean_norm = 18.640663
 
 ## Intra-cluster Composite Rate
 
-- Negative: 0.23684210526315788
-- Positive: 0.4
+- Negative: 0.18421052631578946
+- Positive: 0.42258726899383986
 
 ## Per-view Cluster Rate
 
-- influence = 0.35507246376811596
-- friendship = 0.3729683490162532
-- more_time = 0.4170731707317073
-- advice = 0.4659400544959128
-- disrespect = 0.23684210526315788
-- feedback = 0.460093896713615
+- influence = 0.2898550724637681
+- friendship = 0.42087254063301965
+- more_time = 0.4292682926829268
+- advice = 0.47956403269754766
+- disrespect = 0.18421052631578946
+- feedback = 0.49295774647887325

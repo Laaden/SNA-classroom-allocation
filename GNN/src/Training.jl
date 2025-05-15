@@ -62,10 +62,7 @@
                 push!(logs.modularity, metrics[:modularity])
                 push!(logs.silhouette, metrics[:silhouettes])
                 push!(logs.conductance, metrics[:conductance])
-
-                if epoch % 100 == 0
-                    push!(logs.embeddings, output)
-                end
+                push!(logs.embeddings, output)
 
                 if verbose == true
                     w_c = 0.5f0 * exp(-2f0*model.logσ_c[1])

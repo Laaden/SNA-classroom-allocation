@@ -130,4 +130,28 @@ module Plotting
         return p
     end
 
+    export animate_embeddings
+    function animate_embeddings(embeddings::Vector{Matrix{Float32}}, labels::Vector{Int}, path::String)
+    ref = embeddings[end]
+    mod = UMAP_(embeddings[end], 2; n_neighbors=15)
+    proj_embeddings = [transpose(UMAP.transform(mod, emb)) for emb in embeddings]
+
+           anim = @animate for (i, proj) in enumerate(proj_embeddings)
+               scatter( proj[:, 1], proj[:, 2],
+                   c = labels,
+                   legend = false,
+                   title = "Epoch $(i*10)",
+                   markerstrokewidth = 0.5,
+                   markersize = 5,
+                   palette = palette(:tab10),
+                   axis = nothing,
+                   border = :none
+                )
+           end
+           gif(anim, path, fps = 10)
+       end
+
+
+
 end
+

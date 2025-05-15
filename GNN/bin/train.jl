@@ -1,6 +1,6 @@
 using Pkg
 Pkg.activate(@__DIR__)
-using GNNProject, Graphs, GNNGraphs, BSON, Flux, Leiden, DataFrames
+using GNNProject, Graphs, GNNGraphs, BSON, Flux, Leiden, DataFrames, Statistics
 
 
 const OUTPUT_DIR = joinpath(@__DIR__, "..", "output")

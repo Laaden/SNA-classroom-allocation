@@ -138,7 +138,7 @@ module Types
             modularity::Vector{Float32} = Float32[],
             silhouette::Vector{Float32} = Float32[],
             conductance::Vector{Float32} = Float32[],
-            embeddings::Vector{Matrix{Float32}} = []
+            embeddings::Vector{Matrix{Float32}} = Matrix{Float32}[]
         )
             return new(loss, accuracy, modularity, silhouette, conductance, embeddings)
         end
