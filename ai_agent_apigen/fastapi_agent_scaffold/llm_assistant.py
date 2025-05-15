@@ -6,12 +6,14 @@ import json
 
 load_dotenv()
 
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
-TOGETHER_MODEL = os.getenv("TOGETHER_MODEL", "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nousresearch/deephermes-3-mistral-24b-preview:free")
 
 headers = {
-    "Authorization": f"Bearer {TOGETHER_API_KEY}",
-    "Content-Type": "application/json"
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Content-Type": "application/json",
+    "HTTP-Referer": "http://localhost",     # Or your actual domain if deployed
+    "X-Title": "AI Agent Query Planner"
 }
 
 SYSTEM_INSTRUCTION = """
@@ -39,18 +41,18 @@ Special rules:
 """
 
 def generate_query_plan(prompt):
-    if not TOGETHER_API_KEY:
-        raise EnvironmentError("TOGETHER_API_KEY not set in environment variables.")
+    if not OPENROUTER_API_KEY:
+        raise EnvironmentError("OPENROUTER_API_KEY not set in environment variables.")
 
     data = {
-        "model": TOGETHER_MODEL,
+        "model": OPENROUTER_MODEL,
         "messages": [
             {"role": "system", "content": SYSTEM_INSTRUCTION},
             {"role": "user", "content": prompt}
         ]
     }
 
-    response = requests.post("https://api.together.xyz/v1/chat/completions", headers=headers, json=data)
+    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
 
     try:
         res_json = response.json()
