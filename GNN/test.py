@@ -21,8 +21,7 @@ def generate_clusters(data: str):
     except:
         return None
 
-
-def pull_adjacencies(client, db):
+def pull_adjacencies(db):
     VIEW_TYPE_MAP = {
         "Friends":      "friendship",
         "Influential":  "influence",
@@ -37,6 +36,7 @@ def pull_adjacencies(client, db):
 
     views = []
     for raw_view, renamed_view in VIEW_TYPE_MAP.items():
+
         src_col = f"Source {raw_view}"
         tgt_col = f"Target {raw_view}"
 
@@ -57,10 +57,12 @@ def pull_adjacencies(client, db):
                 })
     return {"views": views}
 
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://3.105.47.11:27017")
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://mongoAdmin:securePass123@3.105.47.11:27017/?authSource=admin")
 client    = pymongo.MongoClient(MONGO_URI)
 db        = client["sna_database"]
 
-adjacency_json = pull_adjacencies(client, db)
+adjacency_json = pull_adjacencies(db)
 clusters = generate_clusters(json.dumps(adjacency_json))
+
+print(pd.DataFrame(list(db.sna_student_raw.find({}, {"_id": 0}))))
 print(clusters)

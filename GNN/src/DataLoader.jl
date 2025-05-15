@@ -49,10 +49,10 @@ module DataLoader
             matrix_from_sheet(xlsx_file, "net_3_MoreTime"),
             matrix_from_sheet(xlsx_file, "net_4_Advice"),
             matrix_from_sheet(xlsx_file, "net_5_Disrespect"),
-            matrix_from_sheet(xlsx_file, "net_affiliation_0_SchoolActivit"),
+            # matrix_from_sheet(xlsx_file, "net_affiliation_0_SchoolActivit"),
         )
 
-        fr_mat, inf_mat, fd_mat, mt_mat, ad_mat, ds_mat, sc_mat = adjacency_matrices
+        fr_mat, inf_mat, fd_mat, mt_mat, ad_mat, ds_mat = adjacency_matrices
 
         # todo, add GPU later if needed
         graph_views = [
@@ -62,7 +62,7 @@ module DataLoader
             WeightedGraph(mt_mat, 1.0f0, "more_time"),#1.0f0),
             WeightedGraph(ad_mat, 1.0f0, "advice"),#0.9f0),
             WeightedGraph(ds_mat, -1.0f0, "disrespect"),#-1.0f0),
-            WeightedGraph(sc_mat, 1.0f0, "affiliation"),#0.1f0),
+            # WeightedGraph(sc_mat, 1.0f0, "affiliation"),#0.1f0),
         ]
 
         composite_graph = reduce(

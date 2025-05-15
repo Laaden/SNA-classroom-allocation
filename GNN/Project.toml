@@ -27,18 +27,6 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 igraph_jll = "4d841945-e0c2-5143-9479-18e4f0102556"
 leiden_jll = "b3d7b256-84d9-5f32-9065-d6f1a433f499"
 
-[weakdeps]
-CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-GraphMakie = "1ecd5474-83a3-4783-bb4f-06765db800d2"
-MultivariateStats = "6f286f6a-111f-5878-ab1e-185364afe411"
-NetworkLayout = "46757867-2c16-5918-afeb-47bfcb05e46a"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-UMAP = "c4f8c510-2410-5be4-91d7-4fbaeb39457e"
-
-[extensions]
-GNNProjectPlotsExt = ["Plots", "CairoMakie", "GraphMakie", "MultivariateStats",
-"NetworkLayout", "UMAP"]
-
 [compat]
 ArgParse = "1.2.0"
 BSON = "0.3.9"
