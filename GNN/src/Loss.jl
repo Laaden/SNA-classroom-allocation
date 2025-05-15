@@ -54,7 +54,7 @@ module Loss
     	A = sign(g.weight[]) * g.adjacency_matrix
     	# todo, i removed temperature
 		h = model(g) |>
-			x -> Flux.softmax(x; dims = 1)
+			x -> Flux.softmax(x / 0.5f0; dims = 1)
 		indegs = Float32.(degree(g.graph, dir=:in))
 		outdegs = Float32.(degree(g.graph, dir=:out))
 		m = ne(g.graph)
@@ -132,7 +132,8 @@ module Loss
 		Acc = 0f0
 		for g in views
         	lc, acc = contrastive_loss(g, model, τ=τ)
-			lm      = soft_modularity_loss(g, model)
+			# lm      = Flux.softplus(soft_modularity_loss(g, model))
+			lm      = 1.0f0 + soft_modularity_loss(g, model)
 			lb      = cluster_balance_loss(g, model)
 
 			Lc  += lc
@@ -141,6 +142,19 @@ module Loss
 			Acc += acc
 		end
 		return Lc, Lm, Lb, Acc
+	end
+
+	export init_uncertainty!
+	function init_uncertainty!(model::MultiViewGNN, views; τ::Float32=1f0)
+    	Lc0, Lm0, Lb0, _ = compute_task_losses(model, views, τ)
+		min_val = 1e-6
+		Lc0 = max(Lc0, min_val)
+		Lm0 = max(Lm0, min_val)
+		Lb0 = max(Lb0, min_val)
+    	model.logσ_c[1] = -0.5f0 * log(2f0 / Lc0)
+   	 	model.logσ_m[1] = -0.5f0 * log(2f0 / Lm0)
+    	model.logσ_b[1] = -0.5f0 * log(2f0 / Lb0)
+    	return model
 	end
 
 end

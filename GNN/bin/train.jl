@@ -24,18 +24,7 @@ model = MultiViewGNN(
     size(composite_graph, 1)
 )
 opt = Flux.Adam(1e-3)
-# results = hyperparameter_search(
-#     model,
-#     graph_views,
-#     composite_graph,
-#     taus=[0.1f0, 0.5f0, 1.0f0],
-#     lambdas=[10.0f0, 10.0f0],
-#     gammas=[0.01f0, 0.1f0],
-#     epochs=500,
-#     n_repeats=3
-# )
 
-# best_parameters = select_best_result(results)
 trained_model = train_model(
     model,
     opt,
@@ -45,13 +34,15 @@ trained_model = train_model(
     τ=1.0f0, #best_parameters.τ,
     γ=1.0f0,#best_parameters.γ,
     verbose=true,
-    epochs=1000
+    epochs=2000
 )
 
 output = model(graph_views)
 
 norm_embeddings = Flux.normalise(output; dims=1)
-knn = knn_graph(norm_embeddings, Int64(round(sqrt(size(output, 2)))))
+avg_deg = mean([2 * ne(v.graph) / nv(v.graph) for v in graph_views if v.weight[] > 0])
+k = min(round(Int, avg_deg), 15)
+knn = knn_graph(norm_embeddings, k)
 clusters = leiden(adjacency_matrix(knn), "ngrb")
 clustered_students = DataFrame(
     embedding_index=collect(vertices(composite_graph)),

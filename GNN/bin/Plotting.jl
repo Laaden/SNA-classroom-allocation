@@ -27,7 +27,7 @@ module Plotting
                 x,
                 y,
                 color = r_colour,
-                # label=label,
+                label=nothing,
                 alpha= rank <= 3 ? 1 : 0.15,
                 lw = rank <= 3 ? 3 : 1.5
             )
@@ -38,10 +38,11 @@ module Plotting
 
             plot!(
                 x, yfit;
-                color   = r_colour,
+                color   = "red",
                 lw      = 2,
                 ls      = :dash,
                 alpha   = 0.7,
+                label=nothing
             )
         end
         title!(titlecase(string(metric)) * " by Epoch")

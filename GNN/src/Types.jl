@@ -131,14 +131,16 @@ module Types
         modularity::Vector{Float32}
         silhouette::Vector{Float32}
         conductance::Vector{Float32}
+        embeddings::Vector{Matrix{Float32}}
         function TrainLog(
             loss::LossLogs = LossLogs(),
             accuracy::Vector{Float32} = Float32[],
             modularity::Vector{Float32} = Float32[],
             silhouette::Vector{Float32} = Float32[],
-            conductance::Vector{Float32} = Float32[]
+            conductance::Vector{Float32} = Float32[],
+            embeddings::Vector{Matrix{Float32}} = []
         )
-            return new(loss, accuracy, modularity, silhouette, conductance)
+            return new(loss, accuracy, modularity, silhouette, conductance, embeddings)
         end
     end
 
@@ -199,7 +201,7 @@ module Types
 
         disc = Flux.Bilinear((output_dim, output_dim) => 1)
 
-        return MultiViewGNN(encoder, layers, proj_head, disc, embeddings, [0.0f0], [-2.0f0], [0.0f0])
+        return MultiViewGNN(encoder, layers, proj_head, disc, embeddings, [0.0f0], [0.0f0], [0.0f0])
     end
 
     # Forward pass for the GNN, acting on `g` graph and `x` node embedding matrix

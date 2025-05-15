@@ -26,27 +26,17 @@
     # optimised for DGI contrastive learning.
     export train_model
     function train_model(model::MultiViewGNN, opt, views::Vector{WeightedGraph}, graph::GNNGraph; λ::Float32, τ::Float32, γ::Float32, epochs::Int64=300, verbose::Bool=false)::TrainResult
-        state = Flux.setup(opt, model)
+        init_uncertainty!(model, views; τ=τ)
 
+        state = Flux.setup(opt, model)
         logs = TrainLog()
         graph = cpu(graph)
 
         # stop training early if modularity/loss doesn't improve
-        # es_mod =  Flux.early_stopping(
-        #     () -> logs.modularity[end], 30;
-        #     distance = (a,b) -> b - a,
-        #     min_dist = 1e-3
-        # )
         es_mod = Flux.early_stopping(() -> logs.loss.modularity_loss[end], 30; min_dist=1e-3)
-
         es_total = Flux.early_stopping(() -> logs.loss.total_loss[end], 30; min_dist=1e-3)
 
-        epoch = 0
-        max_epochs = 5000
-
-        # for epoch in 1:epochs
-        while epoch < max_epochs
-            epoch += 1
+        for epoch in 1:epochs
 
             grads = Flux.gradient((model) -> begin
                 loss, _ = multitask_loss(model, views)
@@ -67,56 +57,44 @@
             push!(logs.accuracy, Acc / length(views))
 
             if epoch % 10 == 0
-                if verbose == true
-                    @info "Epoch $epoch | " *
-                    "Loss: $(round(total_loss, digits=3)) " *
-                    "Lc=$(round(loss_c, digits=3)), " *
-                    "Lm=$(round(loss_m, digits=3)), " *
-                    "Lb=$(round(loss_b, digits=3))) | " *
-                    "Acc=$(round(Acc / length(views), digits=3))) | "
-                end
-
                 output = model(views)
                 metrics = evaluate_embeddings(cpu(output), graph)
                 push!(logs.modularity, metrics[:modularity])
                 push!(logs.silhouette, metrics[:silhouettes])
                 push!(logs.conductance, metrics[:conductance])
 
-                if es_mod()
+                if epoch % 100 == 0
+                    push!(logs.embeddings, output)
+                end
+
+                if verbose == true
+                    w_c = 0.5f0 * exp(-2f0*model.logσ_c[1])
+                    w_m = 0.5f0 * exp(-2f0*model.logσ_m[1])
+                    w_b = 0.5f0 * exp(-2f0*model.logσ_b[1])
+
+                    @info "Epoch $epoch | " *
+                    "Loss: $(round(total_loss, digits=3)) " *
+                    "Lc=$(round(loss_c, digits=3)), " *
+                    "Lm=$(round(loss_m, digits=3)), " *
+                    "Lb=$(round(loss_b, digits=3))) | " *
+                    "Acc=$(round(Acc / length(views), digits=3))) | \n" *
+                    "\t→ Modularity = $(round(metrics[:modularity], digits=3)), " *
+                    "Silhouette = $(round(metrics[:silhouettes], digits=3)), " *
+                    "Conductance = $(round(metrics[:conductance], digits=3)) \n" *
+                    "\t→ task-weights: w_c=$(round(w_c, digits = 3)), w_m=$(round(w_m, digits = 3)), w_b=$(round(w_b, digits = 3))"
+
+
+                end
+
+
+                if false #es_mod()
                     @info "Early modularity stopping triggered at epoch: $epoch"
                     break
-                elseif es_total()
+                elseif false #es_total()
                     @info "Early loss stopping triggered at epoch: $epoch"
                     break
                 end
             end
-
-            # push!(logs.loss.balance_loss, balance_epoch)
-            # push!(logs.loss.modularity_loss, mod_loss_epoch)
-            # push!(logs.loss.contrast_loss, contrast_epoch)
-            # push!(logs.loss.total_loss, loss_epoch)
-
-            # push!(logs.accuracy, acc_epoch / length(views))
-
-            # if epoch % 10 == 0 && verbose == true
-            #      @info "Epoch $epoch | " *
-            #      "Loss: $(round(loss_epoch, digits=3)) " *
-            #      "(C=$(round(contrast_epoch, digits=3)), " *
-            #      "M=$(round(mod_loss_epoch, digits=3)), " *
-            #      "B=$(round(balance_epoch, digits=3))) | " *
-            #      "Acc=$(round(acc_epoch / length(views), digits=3))"
-            # end
-
-            # if epoch % 10 == 0
-            #     output = model(views)
-            #     metrics = fast_evaluate_embeddings(cpu(output), graph)
-            #     push!(logs.modularity, metrics[:modularity])
-            #     push!(logs.silhouette, metrics[:silhouettes])
-            #     push!(logs.conductance, metrics[:conductance])
-
-            #     # we'll early stop if modularity hasn't improved in 150 epochs
-            #     es() && break
-            # end
         end
 
         return TrainResult(model, λ, τ, γ, logs)
