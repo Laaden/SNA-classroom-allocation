@@ -5,7 +5,6 @@ from collections import Counter
 from deap import base, creator, tools, algorithms
 from pymongo import MongoClient
 
-
 def run_ga_allocation(
     mongo_uri: str = None,
     db_name: str = "sna_database",
@@ -23,12 +22,12 @@ def run_ga_allocation(
     2) Load cluster assignments from JSON list
     3) Pull raw survey + performance data, merge and fill missing
     4) Set up & run a multi-objective GA
-    5) Write cluster and edge docs back to MongoDB with _id fields
+    5) Write cluster and edge docs back to MongoDB with id fields
     6) Return cluster_docs and edge_docs as JSON
     """
     # Connect & name map
     if mongo_uri is None:
-        mongo_uri = os.environ.get("MONGO_URI", "mongodb://3.105.47.11:27017")
+        mongo_uri = os.environ.get("MONGO_URI", "mongodb://mongoAdmin:securePass123@3.105.47.11:27017/?authSource=admin")
     client = MongoClient(mongo_uri)
     db = client[db_name]
 
@@ -41,16 +40,16 @@ def run_ga_allocation(
         name = f"{doc.get('First-Name','').strip()} {doc.get('Last-Name','').strip()}".strip()
         id_name_map[int(pid)] = name
 
-    # Load cluster assignments (JSON list of {"_id": student_id, "cluster_label": int})
+    # Load cluster assignments (JSON list of {"id": student_id, "cluster": int})
     if clusters_json is None:
         clusters_json = list(db.result_node_cluster.find({}))
     df_clusters = pd.DataFrame(clusters_json)
-    if "_id" not in df_clusters.columns or "cluster_label" not in df_clusters.columns:
-        raise ValueError("clusters_json must contain '_id' and 'cluster_label'")
-    df_clusters = df_clusters.rename(columns={"_id": "student_id"})
+    if "id" not in df_clusters.columns or "cluster" not in df_clusters.columns:
+        raise ValueError("clusters_json must contain 'id' and 'cluster'")
+    df_clusters = df_clusters.rename(columns={"id": "student_id"})
     df_clusters["student_id"] = pd.to_numeric(df_clusters["student_id"], errors="coerce").astype(int)
-    df_clusters["cluster_label"] = pd.to_numeric(df_clusters["cluster_label"], errors="coerce").astype(int)
-    K = df_clusters["cluster_label"].nunique()
+    df_clusters["cluster"] = pd.to_numeric(df_clusters["cluster"], errors="coerce").astype(int)
+    K = df_clusters["cluster"].nunique()
 
     # Pull raw survey + performance
     df_raw = pd.DataFrame(list(db.sna_student_raw.find({}, {"Participant-ID": 1, perf_field: 1})))
@@ -111,30 +110,14 @@ def run_ga_allocation(
     pareto = tools.sortNondominated(pop, len(pop), first_front_only=True)[0]
     best = max(pareto, key=lambda ind: ind.fitness.values[1])
 
-    # 5) Write cluster docs with explicit _id
-    cluster_coll = db.result_node_cluster
-    cluster_coll.delete_many({})
+    # 5) Write cluster docs with explicit id
     cluster_docs = []
     for sid, grp in zip(student_ids, best):
         cluster_docs.append({
-            "_id": int(sid),
+            "id": int(sid),
             "label": id_name_map.get(int(sid), ""),
-            "cluster_label": int(grp)
+            "cluster": int(grp)
         })
-    if cluster_docs:
-        cluster_coll.insert_many(cluster_docs)
 
-    # 6) Export edges with explicit _id
-    edges_coll = db.result_edges_info
-    edges_coll.delete_many({})
-    edge_docs = []
-    idx = 0
-    for d in db.sna_student_raw.find({}, {"Participant-ID": 1, edge_field: 1}):
-        pid = d.get("Participant-ID"); to = d.get(edge_field)
-        if pid is None or to is None: continue
-        edge_docs.append({"_id": idx, "from": int(pid), "to": to, "label": edge_field})
-        idx += 1
-    if edge_docs:
-        edges_coll.insert_many(edge_docs)
+    return cluster_docs
 
-    return cluster_docs, edge_docs

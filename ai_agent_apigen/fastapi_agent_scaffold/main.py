@@ -10,6 +10,7 @@ import math
 from fastapi import UploadFile, File, Request
 from fastapi.responses import RedirectResponse
 import pandas as pd
+from ai_agent_apigen.fastapi_agent_scaffold.ga_runner import run_ga_allocation
 from llm_assistant import generate_query_plan
 import json
 
@@ -91,11 +92,24 @@ async def run_gnn():
         if clusters is None:
             return {"status": "error", "message": "GNN processing failed."}
 
-        # (Optional) Save to MongoDB
         db["gnn_results"].delete_many({})
         db["gnn_results"].insert_many(clusters.to_dict("records"))
 
         return {"status": "success", "message": "GNN executed successfully."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/run_ga")
+async def run_ga():
+    try:
+        clusters = run_ga_allocation(perf_field = "Perc_Academic")
+        if clusters is None:
+            return {"status": "error", "message": "GA processing failed."}
+
+        db["result_node_cluster"].delete_many({})
+        db["result_node_cluster"].insert_many(clusters.to_dict("records"))
+
+        return {"status": "success", "message": "GA executed successfully."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -151,7 +165,7 @@ async def update_weights(
         affiliation: int = Form(...)
 ):
     try:
-        db["sna_weights"].delete_many({})  # Optional: clear old data
+        db["sna_weights"].delete_many({})
         db["sna_weights"].insert_one({
             "friendship": friendship,
             "influence": influence,
