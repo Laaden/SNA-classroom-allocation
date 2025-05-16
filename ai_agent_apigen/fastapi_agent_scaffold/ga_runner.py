@@ -27,7 +27,7 @@ def run_ga_allocation(
     """
     # Connect & name map
     if mongo_uri is None:
-        mongo_uri = os.environ.get("MONGO_URI", "mongodb://mongoAdmin:securePass123@3.105.47.11:27017/?authSource=admin")
+        mongo_uri = os.environ.get("MONGO_URI", "mongodb://3.105.47.11:27017")
     client = MongoClient(mongo_uri)
     db = client[db_name]
 
