@@ -83,38 +83,6 @@ module Loss
 	end
 	Zygote.@nograd infer_k
 
-
-	export calculate_total_loss
-	function calculate_total_loss(model::MultiViewGNN, views::Vector{WeightedGraph}, τ::Float32, λ::Float32, γ::Float32)
-		total_contrastive_loss = 0f0
-		total_modularity_loss = 0f0
-		total_balance_loss = 0f0
-		total_accuracy = 0f0
-
-		for g in views
-			# subgraph = sample_weighted_subgraph(g)
-			subgraph = g
-			contrast_loss, disc_acc = contrastive_loss(subgraph, model; τ=τ)
-			if (λ != 0)
-            	total_modularity_loss += soft_modularity_loss(subgraph, model)
-			end
-			total_balance_loss += cluster_balance_loss(subgraph, model)
-			total_contrastive_loss += contrast_loss
-			total_accuracy += disc_acc
-		end
-
-    	total_loss = total_contrastive_loss +
-			λ * total_modularity_loss +
-			γ * total_balance_loss
-
-		return (total_loss, Dict(
-			:contrast_loss => total_contrastive_loss,
-			:mod_loss => total_modularity_loss,
-			:balance_loss => total_balance_loss,
-			:acc => total_accuracy
-		))
-	end
-
 	export multitask_loss
 	function multitask_loss(model::MultiViewGNN, views::Vector{WeightedGraph})
 		Lc, Lm, Lb, Acc = compute_task_losses(model, views, 1.0f0)
@@ -132,7 +100,6 @@ module Loss
 		Acc = 0f0
 		for g in views
         	lc, acc = contrastive_loss(g, model, τ=τ)
-			# lm      = Flux.softplus(soft_modularity_loss(g, model))
 			lm      = 1.0f0 + soft_modularity_loss(g, model)
 			lb      = cluster_balance_loss(g, model)
 
