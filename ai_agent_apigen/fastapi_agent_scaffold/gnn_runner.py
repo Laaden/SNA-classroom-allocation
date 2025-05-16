@@ -29,38 +29,31 @@ def run_gnn_pipeline():
     MONGO_URI = os.environ.get("MONGO_URI", "mongodb://3.105.47.11:27017")
     client = pymongo.MongoClient(MONGO_URI)
     db = client["sna_database"]
-    VIEW_TYPE_MAP = {
-        "Friends":      "friendship",
-        "Influential":  "influence",
-        "Feedback":     "feedback",
-        "Advice":       "advice",
-        "Disrespect":   "disrespect",
+
+    df_weights = pd.DataFrame(list(db.sna_weights.find({}, {"_id": 0})))
+    df_disrespect = pd.DataFrame(list(db.raw_disrespect.find({}, {"_id": 0}))).dropna()
+    df_feedback = pd.DataFrame(list(db.raw_feedback.find({}, {"_id": 0}))).dropna()
+    df_friendship = pd.DataFrame(list(db.raw_friendship.find({}, {"_id": 0}))).dropna()
+    df_influence = pd.DataFrame(list(db.raw_influential.find({}, {"_id": 0}))).dropna()
+    df_advice = pd.DataFrame(list(db.raw_advice.find({}, {"_id": 0}))).dropna()
+
+    edges = {
+        "disrespect": df_disrespect[['source','target']].to_numpy().tolist(),
+        "feedback": df_feedback  [['source','target']].to_numpy().tolist(),
+        "friendship": df_friendship[['source','target']].to_numpy().tolist(),
+        "influence": df_influence [['source','target']].to_numpy().tolist(),
+        "advice": df_advice    [['source','target']].to_numpy().tolist()
     }
 
-    df_raw = pd.DataFrame(list(db.sna_student_raw.find({}, {"_id": 0})))
-    colnames = df_raw.columns.tolist()
-    df_weights = pd.DataFrame(list(db.sna_weights.find({}, {"_id": 0})))
+    views = [
+        {
+            "edges":     edges[rel],
+            "weight":    df_weights[rel][0].item(),
+            "view_type": rel
+        }
+        for rel in ["disrespect","feedback","friendship","influence","advice"]
+    ]
+    payload = {"views": views}
 
-    views = []
-    for raw_view, renamed_view in VIEW_TYPE_MAP.items():
-        src_col = f"Source {raw_view}"
-        tgt_col = f"Target {raw_view}"
-
-        if src_col in colnames and tgt_col in colnames:
-            df_edges = df_raw[[src_col, tgt_col]].dropna()
-
-            edges = [
-                [int(src), int(tgt)]
-                for src, tgt in zip(df_edges[src_col], df_edges[tgt_col])
-                if pd.notna(src) and pd.notna(tgt)
-            ]
-
-            if edges:
-                views.append({
-                    "edges": edges,
-                    "weight": df_weights[renamed_view][0].item(),
-                    "view_type": renamed_view
-                })
-
-    cluster_df = generate_clusters(json.dumps({"views": views}))
+    cluster_df = generate_clusters(json.dumps(payload))
     return cluster_df
