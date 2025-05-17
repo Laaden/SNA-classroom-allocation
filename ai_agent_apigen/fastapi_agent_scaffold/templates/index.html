@@ -2,11 +2,123 @@
 <html>
 <head><title>FastAPI Agent</title></head>
 <body>
-  <h2>AI API Generator</h2>
-  <form method="post" action="/generate">
-    <label>Prompt:</label><br>
-    <textarea name="user_prompt" rows="5" cols="60"></textarea><br><br>
-    <input type="submit" value="Generate Endpoint">
-  </form>
+<h2>AI API Generator</h2>
+<form method="post" action="/generate">
+  <label>Prompt:</label><br>
+  <textarea name="user_prompt" rows="5" cols="60"></textarea><br><br>
+  <input type="submit" value="Generate Endpoint">
+</form>
+
+<hr>
+
+<h2>Upload CSV to MongoDB</h2>
+
+{% if request.query_params.get('success') %}
+<p style="color:green;">✅ Upload successful!</p>
+{% endif %}
+
+<form id="csvForm" method="post" enctype="multipart/form-data">
+  <label for="collection">Collection Name:</label><br>
+  <input type="text" id="collection" name="collection" required><br><br>
+
+  <label for="file">Choose CSV File:</label><br>
+  <input type="file" id="file" name="file" accept=".csv" required><br><br>
+
+  <input type="submit" value="Upload CSV">
+</form>
+
+<h2>Upload JSON to MongoDB</h2>
+<form id="jsonForm" enctype="multipart/form-data">
+  <label for="jsonCollection">Collection Name:</label><br>
+  <input type="text" id="jsonCollection" required><br><br>
+
+  <input type="file" id="jsonFile" accept=".json" required><br><br>
+  <input type="submit" value="Upload JSON">
+</form>
+
+<script>
+  document.getElementById("jsonForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const collection = document.getElementById("jsonCollection").value;
+    const fileInput = document.getElementById("jsonFile");
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    const response = await fetch(`/upload_json/${collection}`, {
+      method: "POST",
+      body: formData
+    });
+
+    const result = await response.json();
+    alert(JSON.stringify(result));
+  });
+</script>
+
+<script>
+  document.getElementById('csvForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const collection = document.getElementById('collection').value.trim();
+    const formData = new FormData(this);
+
+    try {
+      const response = await fetch(`/upload_csv/${collection}`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else if (!response.ok) {
+        const data = await response.json();
+        alert("Upload failed: " + JSON.stringify(data));
+      } else {
+        alert("✅ Upload successful.");
+      }
+    } catch (err) {
+      alert("❌ Network error: " + err);
+    }
+  });
+</script>
+
+
+<html>
+<head>
+  <title>Update SNA Weights</title>
+</head>
+<body>
+<h2>Set SNA Weight Values</h2>
+<form action="/update_weights" method="post">
+  <label>Friendship:</label>
+  <input type="number" name="friendship" value="2" min="0" max="10"><br><br>
+
+  <label>Influence:</label>
+  <input type="number" name="influence" value="2" min="0" max="10"><br><br>
+
+  <label>Feedback:</label>
+  <input type="number" name="feedback" value="2" min="0" max="10"><br><br>
+
+  <label>Advice:</label>
+  <input type="number" name="advice" value="4" min="0" max="10"><br><br>
+
+  <label>Disrespect:</label>
+  <input type="number" name="disrespect" value="2" min="0" max="10"><br><br>
+
+  <label>Affiliation:</label>
+  <input type="number" name="affiliation" value="3" min="0" max="10"><br><br>
+
+  <input type="submit" value="Save Weights">
+</form>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html>
+<head><title>Trigger GNN</title></head>
+<body>
+<h2>Run GNN Assignment</h2>
+<form method="post" action="/run_gnn">
+    <button type="submit">Run GNN</button>
+</form>
 </body>
 </html>

@@ -1,0 +1,8 @@
+nohup: ignoring input
+INFO:     Started server process [15389]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+Current working directory: /home/ubuntu/sna_code/SNA-classroom-allocation/ai_agent_apigen/fastapi_agent_scaffold
+INFO:     49.185.166.197:37408 - "GET / HTTP/1.1" 200 OK
+INFO:     49.185.166.197:37430 - "GET / HTTP/1.1" 200 OK
