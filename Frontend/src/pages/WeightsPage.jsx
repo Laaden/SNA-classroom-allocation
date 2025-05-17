@@ -8,6 +8,9 @@ export default function WeightsPage() {
   // --- academic weight (0–100) ---
   const [academicWeight, setAcademicWeight] = useState(50);
 
+  // --- class-size weight (0–100) ---
+  const [classSizeWeight, setClassSizeWeight] = useState(50);
+
   // --- SNA multipliers (–2.0 to +2.0) ---
   const [friendshipWeight, setFriendshipWeight] = useState(1.0);
   const [influenceWeight, setInfluenceWeight] = useState(1.0);
@@ -87,6 +90,7 @@ export default function WeightsPage() {
     e.preventDefault();
     const payload = {
       academic: academicWeight,
+      classSize: classSizeWeight,
       friendship: friendshipWeight,
       influence: influenceWeight,
       feedback: feedbackWeight,
@@ -188,6 +192,20 @@ export default function WeightsPage() {
                 onChange={e => setAcademicWeight(Number(e.target.value))}
               />
               <span>{academicWeight}%</span>
+            </div>
+
+            {/* Class-Size slider */}
+            <div className="form-group">
+              <label htmlFor="classSizeWeight">Class Size Weight:</label>
+              <input
+                type="range"
+                id="classSizeWeight"
+                min="0"
+                max="100"
+                value={classSizeWeight}
+                onChange={e => setClassSizeWeight(Number(e.target.value))}
+              />
+              <span>{classSizeWeight}%</span>
             </div>
 
             {/* SNA multipliers –2.0 to +2.0 */}
