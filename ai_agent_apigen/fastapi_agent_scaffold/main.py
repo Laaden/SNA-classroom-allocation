@@ -120,17 +120,17 @@ async def run_all():
     try:
         # Step 1: Run GNN
         gnn_clusters = run_gnn_pipeline()
-        if gnn_clusters is None or gnn_clusters.empty:
+        if gnn_clusters is None:
             return {"status": "error", "step": "gnn", "message": "GNN processing failed."}
 
         # Step 2: Run GA (after GNN)
         ga_clusters = run_ga_allocation(perf_field="Perc_Academic")
-        if ga_clusters is None or ga_clusters.empty:
+        print(ga_clusters)
+        if ga_clusters is None:
             return {"status": "error", "step": "ga", "message": "GA processing failed."}
 
         db["result_node_cluster"].delete_many({})
-        db["result_node_cluster"].insert_many(ga_clusters.to_dict("records"))
-
+        db["result_node_cluster"].insert_many(ga_clusters)
         return {"status": "success", "message": "Both GNN and GA executed successfully."}
 
     except Exception as e:

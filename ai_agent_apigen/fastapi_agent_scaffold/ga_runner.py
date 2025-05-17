@@ -42,7 +42,7 @@ def run_ga_allocation(
 
     # Load cluster assignments (JSON list of {"id": student_id, "cluster": int})
     if clusters_json is None:
-        clusters_json = list(db.result_node_cluster.find({}))
+        clusters_json = list(db.gnn_results.find({}))
     df_clusters = pd.DataFrame(clusters_json)
     if "id" not in df_clusters.columns or "cluster" not in df_clusters.columns:
         raise ValueError("clusters_json must contain 'id' and 'cluster'")
