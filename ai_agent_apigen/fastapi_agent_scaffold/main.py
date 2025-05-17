@@ -10,9 +10,19 @@ import math
 from fastapi import UploadFile, File, Request
 from fastapi.responses import RedirectResponse
 import pandas as pd
-from ga_runner import run_ga_allocation
+from ai_agent_apigen.fastapi_agent_scaffold.ga_runner import run_ga_allocation
 from llm_assistant import generate_query_plan
 import json
+from pydantic import BaseModel
+
+class AllocationPayload(BaseModel):
+    academic: int
+    friendship: float
+    influence: float
+    feedback: float
+    advice: float
+    disrespect: float
+    affiliation: float
 
 # Load environment variables
 MONGO_URI = os.getenv("MONGO_URI")
@@ -113,6 +123,34 @@ async def run_ga():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.post("/api/allocate")
+async def allocate(payload: AllocationPayload):
+    """
+    1) Save SNA multipliers for GNN
+    2) Execute GNN (reads sna_weights internally)
+    3) Execute GA (optimises GNN output)
+    """
+    try:
+        # persist the weights for the GNN to consume
+        db["sna_weights"].delete_many({})
+        db["sna_weights"].insert_one(payload.dict())
+
+        # run the GNN pipeline
+        gnn_clusters = run_gnn_pipeline()
+        # overwrite the previous GNN output
+        db["gnn_results"].delete_many({})
+        db["gnn_results"].insert_many(gnn_clusters.to_dict("records"))
+
+        # run the GA on that GNN output
+        ga_clusters = run_ga_allocation(perf_field="Perc_Academic")
+        # overwrite the previous GA output
+        db["result_node_cluster"].delete_many({})
+        db["result_node_cluster"].insert_many(ga_clusters.to_dict("records"))
+
+        return {"status": "success", "message": "GNN + GA complete."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     # get nodes data
 @app.get("/api/result_node_cluster")
 def get_result_edges_info():
@@ -206,50 +244,6 @@ async def upload_json(collection_name: str, file: UploadFile = File(...)):
         print("❌ Upload JSON error:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ upload csv path by hassan
-@app.post("/upload_raw_csv")
-async def upload_raw_csv(file: UploadFile = File(...)):
-    try:
-        contents = await file.read()
-        df = pd.read_csv(pd.io.common.BytesIO(contents))
-
-        # 🔄 Replace these with your actual columns
-        participant_df = df[["participant_id", "age", "gender", "school_id", "grade", "cluster"]]
-        school_df = df[["school_id", "school_name", "location"]].drop_duplicates()
-        advice_df = df[["participant_id", "advice_to_id", "advice_strength"]]
-        feedback_df = df[["participant_id", "feedback_to_id", "feedback_strength"]]
-        disrespect_df = df[["participant_id", "disrespect_to_id", "disrespect_strength"]]
-        influence_df = df[["participant_id", "influence_to_id", "influence_strength"]]
-        friendship_df = df[["participant_id", "friendship_to_id", "friendship_strength"]]
-
-        tables = {
-            "participant": participant_df,
-            "school": school_df,
-            "advice": advice_df,
-            "feedback": feedback_df,
-            "disrespect": disrespect_df,
-            "influence": influence_df,
-            "friendship": friendship_df
-        }
-
-        inserted_counts = {}
-        for name, table_df in tables.items():
-            table_df = table_df.where(pd.notnull(table_df), None)
-            records = table_df.to_dict(orient="records")
-            db[name].delete_many({})
-            if records:
-                db[name].insert_many(records)
-                inserted_counts[name] = len(records)
-            else:
-                inserted_counts[name] = 0
-
-        return {"status": "success", "inserted": inserted_counts}
-
-    except Exception as e:
-        print("❌ CSV Split Upload Error:", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -340,9 +334,8 @@ def generate(request: Request, user_prompt: str = Form(...)):
 
 
 # ~~~~~~~~~~ Cluster Generation ~~~~~~~~~~~~~~~ #
-from pydantic import BaseModel
 
-class ClusterWeights(BaseModel):
+class ClusterWeights:
     friendship: int
     influence: int
     feedback: int
