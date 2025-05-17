@@ -62,10 +62,10 @@ export default function ResultPage() {
     const studentIds = new Set(nodes.map(n => n.id));
 
     const edges = allEdges
-      .filter(e => studentIds.has(e.from)) // chỉ cần from là học sinh trong lớp
+      .filter(e => studentIds.has(e.source)) // chỉ cần from là học sinh trong lớp
       .map(e => ({
-        from: e.from.toString(),
-        to: e.to.toString(),
+        from: e.source.toString(),
+        to: e.target.toString(),
         label: e.label || "",
         color: EDGE_COLORS[e.label] || "#ccc"
       }));
@@ -92,11 +92,11 @@ export default function ResultPage() {
     const studentIds = new Set(clusterNodes.map(n => n.id));
 
     const filteredEdges = allEdges
-      .filter(e => studentIds.has(e.from)) // vẫn chỉ lọc theo from
+      .filter(e => studentIds.has(e.target)) // vẫn chỉ lọc theo from
       .filter(e => selected === "All" || e.label === selected)
       .map(e => ({
-        from: e.from.toString(),
-        to: e.to.toString(),
+        from: e.target.toString(),
+        to: e.source.toString(),
         label: e.label || "",
         color: EDGE_COLORS[e.label] || "#ccc"
       }));

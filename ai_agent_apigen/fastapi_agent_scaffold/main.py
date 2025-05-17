@@ -67,10 +67,29 @@ def sanitize(doc):
 @app.get("/api/result_edges_info")
 def get_result_edges_info():
     try:
-        collection = db["result_edges_info"]
-        documents = list(collection.find({}, {"_id": 0}))
-        sanitized_docs = [sanitize(doc) for doc in documents]
-        return sanitized_docs
+        df_disrespect = pd.DataFrame(list(db.raw_disrespect.find({}, {"_id": 0}))).dropna()
+        df_feedback   = pd.DataFrame(list(db.raw_feedback.find({}, {"_id": 0}))).dropna()
+        df_friendship = pd.DataFrame(list(db.raw_friendship.find({}, {"_id": 0}))).dropna()
+        df_influence  = pd.DataFrame(list(db.raw_influential.find({}, {"_id": 0}))).dropna()
+        df_advice     = pd.DataFrame(list(db.raw_advice.find({}, {"_id": 0}))).dropna()
+
+        edges = {
+            "Disrespect":      df_disrespect[['source','target']].to_numpy().tolist(),
+            "Feedback":        df_feedback[['source','target']].to_numpy().tolist(),
+            "Friends":         df_friendship[['source','target']].to_numpy().tolist(),
+            "Influence":       df_influence[['source','target']].to_numpy().tolist(),
+            "Advice":          df_advice[['source','target']].to_numpy().tolist()
+        }
+
+        flat_edges = []
+        for label, pairs in edges.items():
+            for src, tgt in pairs:
+                flat_edges.append({
+                    "source": int(src),
+                    "target": int(tgt),
+                    "label":  label
+                })
+        return flat_edges
     except Exception as e:
         return {"error": str(e)}
 
@@ -208,7 +227,6 @@ def get_all_edges():
         return JSONResponse(content=dumps(documents), media_type="application/json")
     except Exception as e:
         return {"error": str(e)}
-
 
 @app.post("/upload_json/{collection_name}")
 async def upload_json(collection_name: str, file: UploadFile = File(...)):
