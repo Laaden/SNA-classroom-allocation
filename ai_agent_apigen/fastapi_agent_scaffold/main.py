@@ -10,7 +10,7 @@ import math
 from fastapi import UploadFile, File, Request
 from fastapi.responses import RedirectResponse
 import pandas as pd
-from ai_agent_apigen.fastapi_agent_scaffold.ga_runner import run_ga_allocation
+from ga_runner import run_ga_allocation
 from llm_assistant import generate_query_plan
 import json
 
@@ -206,6 +206,50 @@ async def upload_json(collection_name: str, file: UploadFile = File(...)):
         print("❌ Upload JSON error:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+# ✅ upload csv path by hassan
+@app.post("/upload_raw_csv")
+async def upload_raw_csv(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        df = pd.read_csv(pd.io.common.BytesIO(contents))
+
+        # 🔄 Replace these with your actual columns
+        participant_df = df[["participant_id", "age", "gender", "school_id", "grade", "cluster"]]
+        school_df = df[["school_id", "school_name", "location"]].drop_duplicates()
+        advice_df = df[["participant_id", "advice_to_id", "advice_strength"]]
+        feedback_df = df[["participant_id", "feedback_to_id", "feedback_strength"]]
+        disrespect_df = df[["participant_id", "disrespect_to_id", "disrespect_strength"]]
+        influence_df = df[["participant_id", "influence_to_id", "influence_strength"]]
+        friendship_df = df[["participant_id", "friendship_to_id", "friendship_strength"]]
+
+        tables = {
+            "participant": participant_df,
+            "school": school_df,
+            "advice": advice_df,
+            "feedback": feedback_df,
+            "disrespect": disrespect_df,
+            "influence": influence_df,
+            "friendship": friendship_df
+        }
+
+        inserted_counts = {}
+        for name, table_df in tables.items():
+            table_df = table_df.where(pd.notnull(table_df), None)
+            records = table_df.to_dict(orient="records")
+            db[name].delete_many({})
+            if records:
+                db[name].insert_many(records)
+                inserted_counts[name] = len(records)
+            else:
+                inserted_counts[name] = 0
+
+        return {"status": "success", "inserted": inserted_counts}
+
+    except Exception as e:
+        print("❌ CSV Split Upload Error:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -296,8 +340,9 @@ def generate(request: Request, user_prompt: str = Form(...)):
 
 
 # ~~~~~~~~~~ Cluster Generation ~~~~~~~~~~~~~~~ #
+from pydantic import BaseModel
 
-class ClusterWeights:
+class ClusterWeights(BaseModel):
     friendship: int
     influence: int
     feedback: int

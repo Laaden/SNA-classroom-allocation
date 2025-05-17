@@ -1,2 +1,4 @@
-
 GNN/.vscode/settings.json
+ai_agent_apigen/fastapi_agent_scaffold/gnnworker/
+*.zip
+*.bson
