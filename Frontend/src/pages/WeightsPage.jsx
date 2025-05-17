@@ -5,10 +5,7 @@ import React, { useState } from "react";
 export default function WeightsPage() {
   const navigate = useNavigate();
 
-  // --- academic weight (0–100) ---
   const [academicWeight, setAcademicWeight] = useState(50);
-
-  // --- SNA multipliers (–2.0 to +2.0) ---
   const [friendshipWeight, setFriendshipWeight] = useState(1.0);
   const [influenceWeight, setInfluenceWeight] = useState(1.0);
   const [feedbackWeight, setFeedbackWeight] = useState(1.0);
@@ -16,23 +13,18 @@ export default function WeightsPage() {
   const [disrespectWeight, setDisrespectWeight] = useState(1.0);
   const [affiliationWeight, setAffiliationWeight] = useState(1.0);
 
-  // --- upload state ---
   const [datasetFile, setDatasetFile] = useState(null);
   const [collectionName, setCollectionName] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-
-  // --- allocation feedback ---
   const [allocationMessage, setAllocationMessage] = useState("");
 
-  // Handle file selection
   const handleFileChange = (e) => {
     if (e.target.files?.[0]) {
       setDatasetFile(e.target.files[0]);
     }
   };
 
-  // Upload CSV to backend
   const handleDatasetUpload = async (e) => {
     e.preventDefault();
     if (!collectionName) {
@@ -66,27 +58,27 @@ export default function WeightsPage() {
       const ct = response.headers.get("content-type") || "";
       if (ct.includes("application/json")) {
         const json = JSON.parse(await response.text());
-        setUploadMessage(`✅ Upload successful: ${json.message || ""}`);
+        setUploadMessage(`? Upload successful: ${json.message || ""}`);
       } else {
-        setUploadMessage("✅ Upload successful");
+        setUploadMessage("? Upload successful");
       }
     } catch (err) {
       console.error(err);
       setUploadMessage(
         err.message === "Failed to fetch"
-          ? "❌ Error: Unable to connect to server."
-          : `❌ Error: ${err.message}`
+          ? "? Error: Unable to connect to server."
+          : `? Error: ${err.message}`
       );
     } finally {
       setIsUploading(false);
     }
   };
 
-  // Run allocation
   const handleAllocation = async (e) => {
-    e.preventDefault();
-    const payload = {
-      academic: academicWeight,
+  e.preventDefault();
+
+  try {
+    const weightsPayload = {
       friendship: friendshipWeight,
       influence: influenceWeight,
       feedback: feedbackWeight,
@@ -95,25 +87,44 @@ export default function WeightsPage() {
       affiliation: affiliationWeight,
     };
 
-    try {
-      const response = await fetch("/api/allocate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) throw new Error(`Status ${response.status}`);
-      const result = await response.json();
-      setAllocationMessage(result.message || "Allocation successful.");
-      navigate("/result");
-    } catch (err) {
-      console.error(err);
-      setAllocationMessage(`Error running allocation: ${err.message}`);
+    const weightsRes = await fetch("http://3.105.47.11:8000/update_weights/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(weightsPayload),
+    });
+
+    if (!weightsRes.ok) {
+      throw new Error("Failed to update weights");
     }
-  };
+
+    const runRes = await fetch("http://3.105.47.11:8000/run_gnn_all", {
+      method: "POST",
+    });
+
+    const contentType = runRes.headers.get("content-type");
+
+    if (!runRes.ok) {
+      const errorText = await runRes.text();
+      throw new Error(`GNN+GA execution failed: ${errorText}`);
+    }
+
+    let resultMessage = "Allocation completed successfully.";
+    if (contentType && contentType.includes("application/json")) {
+      const result = await runRes.json();
+      resultMessage = result.message || resultMessage;
+    }
+
+    setAllocationMessage(resultMessage);
+    navigate("/result");
+
+  } catch (err) {
+    console.error(err);
+    setAllocationMessage(`? Error running allocation: ${err.message}`);
+  }
+};
 
   return (
     <div>
-      {/* Header */}
       <header>
         <div className="header-container">
           <div className="logo">
@@ -132,7 +143,6 @@ export default function WeightsPage() {
         </div>
       </header>
 
-      {/* Dataset Upload */}
       <section id="dataset-upload">
         <div className="container">
           <h2>Upload Dataset</h2>
@@ -163,20 +173,17 @@ export default function WeightsPage() {
             </button>
           </form>
           {uploadMessage && (
-            <div className={uploadMessage.startsWith("❌") ? "error-message" : "success-message"}>
+            <div className={uploadMessage.startsWith("?") ? "error-message" : "success-message"}>
               {uploadMessage}
             </div>
           )}
         </div>
       </section>
 
-      {/* Allocation */}
       <section id="allocation">
         <div className="container">
           <h2>Classroom Allocation</h2>
           <form id="allocationForm" onSubmit={handleAllocation}>
-
-            {/* Academic 0–100 slider */}
             <div className="form-group">
               <label htmlFor="academicWeight">Academic Performance Weight:</label>
               <input
@@ -189,8 +196,6 @@ export default function WeightsPage() {
               />
               <span>{academicWeight}%</span>
             </div>
-
-            {/* SNA multipliers –2.0 to +2.0 */}
             <div className="form-group">
               <label htmlFor="friendshipWeight">Friendship Multiplier:</label>
               <input
@@ -269,7 +274,6 @@ export default function WeightsPage() {
               />
               <span>{affiliationWeight.toFixed(1)}</span>
             </div>
-
             <button type="submit">Run Allocation</button>
           </form>
 
@@ -283,7 +287,6 @@ export default function WeightsPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer>
         <div className="container">
           <p>&copy; 2025 ClassForge. All rights reserved.</p>
