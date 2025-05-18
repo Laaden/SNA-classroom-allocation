@@ -211,8 +211,7 @@ async def update_weights(
         feedback: int = Form(...),
         advice: int = Form(...),
         disrespect: int = Form(...),
-        classSize: int = Form(...),
-        academic: int = Form(...),
+        affiliation: int = Form(...)
 ):
     try:
         db["sna_weights"].delete_many({})
@@ -222,8 +221,7 @@ async def update_weights(
             "feedback": feedback,
             "advice": advice,
             "disrespect": disrespect,
-            "classSize": classSize,
-            "academic": academic,
+            "affiliation": affiliation
         })
         return {"status": "success", "message": "Weights updated."}
     except Exception as e:
@@ -299,6 +297,11 @@ async def upload_raw_csv(file: UploadFile = File(...)):
         print("❌ CSV Split Upload Error:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
 # new route for new agent
 @app.post("/ask_agent")
 
@@ -359,18 +362,12 @@ async def ask_agent(user_prompt: str = Form(...)):
             "error": "Failed to execute MongoDB query.",
             "detail": str(e)
         }
-
-
-@app.get("/", response_class=HTMLResponse)
-def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
 # integrate code with the AI agent, the ai agent use this route
 @app.post("/generate", response_class=HTMLResponse)
 def generate(request: Request, user_prompt: str = Form(...)):
     # Get query plan from LLM
     query_plan = generate_query_plan(user_prompt)
-
+    print("== QUERY PLAN ==")
     print("LLM Plan:", query_plan)
 
     collection_name = query_plan.get("collection")
@@ -413,6 +410,8 @@ def generate(request: Request, user_prompt: str = Form(...)):
     print("Filter:", mongo_filter)
     print("Sort:", sort)
     print("Limit:", limit)
+    if not collection_name:
+        return {"error": "Query plan did not include a valid collection name."}
 
     test_cursor = db[collection_name].find(mongo_filter, projection or {})
     if sort:
@@ -459,8 +458,7 @@ class ClusterWeights(BaseModel):
     feedback: float
     advice: float
     disrespect: float
-    academic: float
-    classSize: int
+    affiliation: float
 
 @app.post("/update_weights/", status_code=status.HTTP_204_NO_CONTENT)
 def update_weights(weights: ClusterWeights):

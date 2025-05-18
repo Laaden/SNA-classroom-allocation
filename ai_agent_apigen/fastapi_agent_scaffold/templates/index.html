@@ -3,18 +3,37 @@
 <head><title>FastAPI Agent</title></head>
 <body>
 <h2>AI API Generator</h2>
-<form method="post" action="/generate">
-  <label>Prompt:</label><br>
-  <textarea name="user_prompt" rows="5" cols="60"></textarea><br><br>
-  <input type="submit" value="Generate Endpoint">
+<form method="post" action="/ask_agent">
+  <label for="prompt">Prompt:</label><br>
+  <textarea id="prompt" name="user_prompt" rows="5" cols="60"></textarea><br><br>
+  <input type="submit" value="Ask Agent">
 </form>
+
+<script>
+  document.getElementById("queryForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    const prompt = document.getElementById("userPrompt").value;
+
+    const response = await fetch("/ask_agent", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt: prompt })
+    });
+
+    const data = await response.json();
+    console.log("Response:", data);
+  });
+</script>
 
 <hr>
 
 <h2>Upload CSV to MongoDB</h2>
 
 {% if request.query_params.get('success') %}
-<p style="color:green;">✅ Upload successful!</p>
+<p style="color:green;">? Upload successful!</p>
 {% endif %}
 
 <form id="csvForm" method="post" enctype="multipart/form-data">
@@ -73,10 +92,10 @@
         const data = await response.json();
         alert("Upload failed: " + JSON.stringify(data));
       } else {
-        alert("✅ Upload successful.");
+        alert("? Upload successful.");
       }
     } catch (err) {
-      alert("❌ Network error: " + err);
+      alert("? Network error: " + err);
     }
   });
 </script>
@@ -104,14 +123,8 @@
   <label>Disrespect:</label>
   <input type="number" name="disrespect" value="2" min="0" max="10"><br><br>
 
-  <label>Academic:</label>
-  <input type="number" name="academic" value="2" min="0" max="10"><br><br>
-
-  <label>Class Size:</label>
-  <input type="number" name="classSize" value="25" min="1" max="156"><br><br>
-
-  <!-- <label>Affiliation:</label>
-  <input type="number" name="affiliation" value="3" min="0" max="10"><br><br> -->
+  <label>Affiliation:</label>
+  <input type="number" name="affiliation" value="3" min="0" max="10"><br><br>
 
   <input type="submit" value="Save Weights">
 </form>
