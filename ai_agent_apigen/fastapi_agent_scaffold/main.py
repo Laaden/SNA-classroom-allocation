@@ -383,12 +383,12 @@ def generate(request: Request, user_prompt: str = Form(...)):
 from pydantic import BaseModel
 
 class ClusterWeights(BaseModel):
-    friendship: int
-    influence: int
-    feedback: int
-    advice: int
-    disrespect: int
-    affiliation: int
+    friendship: float
+    influence: float
+    feedback: float
+    advice: float
+    disrespect: float
+    affiliation: float
 
 @app.post("/update_weights/", status_code=status.HTTP_204_NO_CONTENT)
 def update_weights(weights: ClusterWeights):

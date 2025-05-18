@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/classforge.css";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 export default function WeightsPage() {
   const navigate = useNavigate();
@@ -18,6 +18,35 @@ export default function WeightsPage() {
   const [uploadMessage, setUploadMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [allocationMessage, setAllocationMessage] = useState("");
+
+  useEffect(() => {
+    async function getWeights() {
+      try {
+        const res = await fetch("http://3.105.47.11:8000/get_weights/");
+        if (!res.ok) throw new Error(res.statusText);
+
+        const data = await res.json();
+        const setters = {
+          academic: setAcademicWeight,
+          friendship: setFriendshipWeight,
+          influence: setInfluenceWeight,
+          feedback: setFeedbackWeight,
+          advice: setAdviceWeight,
+          disrespect: setDisrespectWeight,
+          affiliation: setAffiliationWeight
+        }
+
+        for (const [k, v] of Object.entries(data)) {
+          const setter = setters[k]
+          if (setter) setter(v)
+        }
+
+      } catch (e) {
+        console.error("Could not load weights:", e);
+      }
+    }
+    getWeights()
+  }, [])
 
   const handleFileChange = (e) => {
     if (e.target.files?.[0]) {
