@@ -92,11 +92,11 @@ export default function ResultPage() {
     const selected = e.target.value;
     setEdgeTypeFilter(selected);
 
-    const clusterNodes = allNodes.filter(n => n.cluster_number === selectedCluster);
+    const clusterNodes = allNodes.filter(n => n.cluster === selectedCluster);
     const studentIds = new Set(clusterNodes.map(n => n.id));
 
     const filteredEdges = allEdges
-      .filter(e => studentIds.has(e.target)) // vẫn chỉ lọc theo from
+      .filter(e => studentIds.has(e.source)) // vẫn chỉ lọc theo from
       .filter(e => selected === "All" || e.label === selected)
       .map(e => ({
         from: e.target.toString(),

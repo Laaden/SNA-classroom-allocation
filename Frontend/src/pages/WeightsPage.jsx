@@ -19,6 +19,8 @@ export default function WeightsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [allocationMessage, setAllocationMessage] = useState("");
 
+  const [isAllocating, setIsAllocating] = useState(false);
+
   useEffect(() => {
     async function getWeights() {
       try {
@@ -106,7 +108,7 @@ export default function WeightsPage() {
 
   const handleAllocation = async (e) => {
   e.preventDefault();
-
+  setIsAllocating(true);
   try {
     const weightsPayload = {
       friendship: friendshipWeight,
@@ -150,6 +152,7 @@ export default function WeightsPage() {
   } catch (err) {
     console.error(err);
     setAllocationMessage(`? Error running allocation: ${err.message}`);
+    setIsAllocating(false);
   }
 };
 
@@ -304,7 +307,17 @@ export default function WeightsPage() {
               />
               <span>{affiliationWeight.toFixed(1)}</span>
             </div>
-            <button type="submit">Run Allocation</button>
+            <button type="submit" disabled={isAllocating}>
+              {isAllocating ? "Running Allocation…" : "Run Allocation"}
+            </button>
+
+            {isAllocating && (
+              <div className="loading-overlay">
+                <div className="spinner" />
+                <p>Crunching the numbers…</p>
+              </div>
+            )}
+
           </form>
 
           <div id="resultsContainer">
