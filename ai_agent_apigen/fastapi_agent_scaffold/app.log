@@ -1,161 +1,53 @@
 nohup: ignoring input
-INFO:     Started server process [19736]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0Current working directory: /home/ubuntu/sna_code/SNA-classroom-allocation/ai_agent_apigen/fastapi_agent_scaffold
-INFO:     49.185.166.197:38237 - "GET / HTTP/1.1" 200 OK
-📄 Received file: advice.csv (Size: 1845246 bytes)
-🧮 DataFrame shape: (115327, 2)
-    source   target
-0  32540.0  32420.0
-1  32540.0  32468.0
-2  32540.0  32469.0
-3  32540.0  32409.0
-4  32540.0  32528.0
-📦 Total records parsed: 115327
-✅ Inserted 115327 documents into 'raw_advice'
-INFO:     49.185.166.197:38238 - "POST /upload_csv/raw_advice HTTP/1.1" 200 OK
-INFO:     194.127.104.11:59654 - "GET /get_weights HTTP/1.1" 307 Temporary Redirect
-INFO:     194.127.104.11:59654 - "GET /get_weights/ HTTP/1.1" 200 OK
-WARNING:  Invalid HTTP request received.
-WARNING:  Invalid HTTP request received.
-INFO:     127.0.0.1:35770 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:35760 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:35020 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:35008 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:45364 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:45366 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:45376 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:45384 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-INFO:     127.0.0.1:50694 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:50698 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-INFO:     127.0.0.1:32782 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:32788 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     194.127.104.11:50994 - "POST /generate HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
 Traceback (most recent call last):
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 403, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
-    await super().__call__(scope, receive, send)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/applications.py", line 112, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/errors.py", line 187, in __call__
-    raise exc
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/errors.py", line 165, in __call__
-    await self.app(scope, receive, _send)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/cors.py", line 93, in __call__
-    await self.simple_response(scope, receive, send, request_headers=headers)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/cors.py", line 144, in simple_response
-    await self.app(scope, receive, send)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 714, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 734, in app
-    await route.handle(scope, receive, send)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 288, in handle
-    await self.app(scope, receive, send)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 76, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 73, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/fastapi/routing.py", line 301, in app
-    raw_response = await run_endpoint_function(
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/fastapi/routing.py", line 214, in run_endpoint_function
-    return await run_in_threadpool(dependant.call, **values)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
+  File "/usr/bin/uvicorn", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/usr/lib/python3/dist-packages/click/core.py", line 1157, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/click/core.py", line 1078, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/click/core.py", line 1434, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/click/core.py", line 783, in invoke
+    return __callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/uvicorn/main.py", line 418, in main
+    run(
+  File "/usr/lib/python3/dist-packages/uvicorn/main.py", line 587, in run
+    server.run()
+  File "/usr/lib/python3/dist-packages/uvicorn/server.py", line 62, in run
+    return asyncio.run(self.serve(sockets=sockets))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "uvloop/loop.pyx", line 1516, in uvloop.loop.Loop.run_until_complete
+  File "/usr/lib/python3/dist-packages/uvicorn/server.py", line 69, in serve
+    config.load()
+  File "/usr/lib/python3/dist-packages/uvicorn/config.py", line 458, in load
+    self.loaded_app = import_from_string(self.app)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/uvicorn/importer.py", line 24, in import_from_string
+    raise exc from None
+  File "/usr/lib/python3/dist-packages/uvicorn/importer.py", line 21, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/home/ubuntu/sna/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/sna_code/SNA-classroom-allocation/ai_agent_apigen/fastapi_agent_scaffold/main.py", line 309, in generate
-    query_plan = generate_query_plan(user_prompt)
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/sna_code/SNA-classroom-allocation/ai_agent_apigen/fastapi_agent_scaffold/llm_assistant.py", line 45, in generate_query_plan
-    raise EnvironmentError("OPENROUTER_API_KEY not set in environment variables.")
-OSError: OPENROUTER_API_KEY not set in environment variables.
-INFO:     127.0.0.1:50630 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:50636 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:50648 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:50652 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     49.185.166.197:37701 - "GET / HTTP/1.1" 200 OK
-INFO:     194.127.104.11:22825 - "OPTIONS /update_weights/ HTTP/1.1" 200 OK
-INFO:     194.127.104.11:22825 - "POST /update_weights/ HTTP/1.1" 204 No Content
-Starting GNN pipeline...
-❌ GNN pipeline error: "None of [Index(['source', 'target'], dtype='object')] are in the [columns]"
-INFO:     194.127.104.11:22825 - "POST /run_gnn_all HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34020 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:34022 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:52766 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:52762 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:40868 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:40870 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-INFO:     127.0.0.1:53160 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:53164 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-INFO:     127.0.0.1:44266 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:44274 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-📄 Received file: net_4_Advice.csv (Size: 4418 bytes)
-🧮 DataFrame shape: (367, 2)
-   Source  Target
-0   32531   32562
-1   32531   32554
-2   32444   32476
-3   32444   32448
-4   32450   32450
-📦 Total records parsed: 367
-✅ Inserted 367 documents into 'raw_advice'
-INFO:     49.185.166.197:37873 - "POST /upload_csv/raw_advice HTTP/1.1" 200 OK
-INFO:     49.185.166.197:37920 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:42706 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:42720 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-📄 Received file: net_4_Advice.csv (Size: 4418 bytes)
-🧮 DataFrame shape: (367, 2)
-   Source  Target
-0   32531   32562
-1   32531   32554
-2   32444   32476
-3   32444   32448
-4   32450   32450
-📦 Total records parsed: 367
-✅ Inserted 367 documents into 'raw_advice'
-INFO:     49.185.166.197:37921 - "POST /upload_csv/raw_advice HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57988 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:57996 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-INFO:     127.0.0.1:58010 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:58016 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-INFO:     127.0.0.1:58028 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:58030 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-INFO:     127.0.0.1:58032 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:58036 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-INFO:     127.0.0.1:58040 - "GET /api/result_edges_info HTTP/1.0" 200 OK
-INFO:     127.0.0.1:58042 - "GET /favicon.ico HTTP/1.0" 404 Not Found
-INFO:     194.127.104.11:27619 - "OPTIONS /update_weights/ HTTP/1.1" 200 OK
-INFO:     194.127.104.11:27619 - "POST /update_weights/ HTTP/1.1" 204 No Content
-Starting GNN pipeline...
-❌ GNN pipeline error: "None of [Index(['source', 'target'], dtype='object')] are in the [columns]"
-INFO:     194.127.104.11:27619 - "POST /run_gnn_all HTTP/1.1" 200 OK
-INFO:     127.0.0.1:36872 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
-INFO:     127.0.0.1:36862 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/ubuntu/sna_code/SNA-classroom-allocation/ai_agent_apigen/fastapi_agent_scaffold/main.py", line 2, in <module>
+    from fastapi import FastAPI, HTTPException, Request, Form, status
+ModuleNotFoundError: No module named 'fastapi'

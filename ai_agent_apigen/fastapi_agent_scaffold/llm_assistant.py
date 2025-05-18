@@ -1,476 +1,179 @@
-# --- main.py ---
-from fastapi import FastAPI, HTTPException, Request, Form, status
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-import pymongo
+# --- llm_assistant.py ---
 import os
-import math
-from fastapi import UploadFile, File, Request
-from fastapi.responses import RedirectResponse
-import pandas as pd
-from ga_runner import run_ga_allocation
-from new_llm_assistance import generate_query_plan
+import requests
+from dotenv import load_dotenv
 import json
 
-# Load environment variables
-MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME")
+load_dotenv()
 
-# --- HTML Form Page ---
-# @app.get("/upload", response_class=HTMLResponse)
-# def upload_page(request: Request):
-#     return templates.TemplateResponse("upload.html", {"request": request})
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+TOGETHER_MODEL = os.getenv("TOGETHER_MODEL", "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO")
 
-# --- CSV Upload Endpoint ---
-from fastapi import UploadFile, File, HTTPException
-import pandas as pd
+if not TOGETHER_API_KEY:
+    raise EnvironmentError("TOGETHER_API_KEY not set in environment variables.")
 
+headers = {
+    "Authorization": f"Bearer {TOGETHER_API_KEY}",
+    "Content-Type": "application/json"
+}
 
-# --- INIT ---
-app = FastAPI(title="LLM-Driven MongoDB API")
+# SYSTEM_INSTRUCTION = """
+# You are a MongoDB query planner for a school social network database. When the user gives a natural language request, respond with:
+#
+# - collection: the main MongoDB collection to query
+# - pipeline: a valid MongoDB aggregation pipeline
+# - explanation: a brief explanation of the logic
+# - (optional) limit: number of records to return
+#
+# The database has the following collections and relationships:
+#
+# 1. sna_student_raw
+#    - Each document is a student profile.
+#    - Primary identifier is: Participant-ID (integer)
+#    This is the schema of the sna_student_raw: Participant-ID, Type, First-Name, Last-Name, Email
+#
+# 2. raw_advice
+# 3. raw_disrespect
+# 4. raw_feedback
+# 5. raw_friendship
+# 6. raw_influential
+# 7. raw_moretime
+#
+# For collections 2–7:
+# - Each row represents a directed social interaction from one student to another.
+# - Use:
+#   - `source`: the sender/initiator (maps to sna_student_raw.Participant-ID)
+#   - `target`: the receiver (also maps to sna_student_raw.Participant-ID)
+#
+# Relationship type is: One-to-Many
+# - One student (`source`) may appear multiple times across these collections.
+#
+# ### Examples:
+# - "Who gave the most advice?" ? group `raw_advice` by `source`, count, join with sna_student_raw
+# - "Top 10 students who received the most friendship links" ? group `raw_friendship` by `target`
+# - "Which students received the most disrespect?" ? group `raw_disrespect` by `target`
+# - "Who influenced others the most?" ? group `raw_influential` by `source`
+#
+# Always:
+# - Use `$group`, `$sort`, `$limit` to get top results
+# - Use `$lookup` to get student names from `sna_student_raw` using `Participant-ID`
+# - Use `$project` to return readable fields like name and count
+# - Set `_id: 0` to clean up output
+#
+# Return only the structured JSON object. Do NOT use triple backticks, markdown formatting, or comments. Do NOT include explanation outside the JSON.
+# """
 
-# Add CORS middleware to allow specific origins
-origins = [
-    "https://dannythesober.github.io",  # Add your frontend URL
-]
+SYSTEM_INSTRUCTION = """
+You are an intelligent API planner. Given a user query, return a JSON plan for a MongoDB query with these keys:
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
-)
+- collection: name of the MongoDB collection
+- pipeline: a valid MongoDB aggregation pipeline
+- explanation: a brief explanation of the logic
+- (optional) limit: integer limit, up to 10000
+- (optional) endpoint: the name of the endpoint if user requests one
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+Use **exact field names** from the database, including correct capitalization and hyphenation (e.g., "Participant-ID").
 
-# --- DATABASE CONNECTION ---
-client = pymongo.MongoClient(MONGO_URI)
-db = client[DB_NAME]
+You must return a **single valid JSON object**, with no markdown formatting, comments, or explanation text outside the JSON.
 
-# --- Utility ---
-from bson import ObjectId
+### Database Structure:
 
-def sanitize(doc):
-    for key, value in doc.items():
-        if isinstance(value, float) and math.isnan(value):
-            doc[key] = None
-        elif isinstance(value, ObjectId):
-            doc[key] = str(value)
-    return doc
+**sna_student_raw**
+- Each document is a student profile.
+- Primary key: "Participant-ID"
+- Other fields: "First-Name", "Last-Name", "Email", "Type" (e.g., "Participant", "Teacher")
 
-# --- ROUTES ---
-# get edges data
-@app.get("/api/result_edges_info")
-def get_result_edges_info():
+**Interaction collections:**
+- raw_advice, raw_disrespect, raw_feedback, raw_friendship, raw_influential, raw_moretime
+- Each document has: "source" (sender ID), "target" (receiver ID)
+
+### Rules:
+
+- Always use $lookup to join with sna_student_raw using:
+  - localField: source or target
+  - foreignField: "Participant-ID"
+  - as: "student"
+
+- Always unwind the joined array and match "student.Type": "Participant"
+
+- **When summarizing by student** (e.g., who gave/received the most...), include:
+  {
+    "$group": {
+      "_id": "$student.Participant-ID",
+      "firstName": { "$first": "$student.First-Name" },
+      "lastName": { "$first": "$student.Last-Name" },
+      "email": { "$first": "$student.Email" },
+      "interactionCount": { "$sum": 1 }
+    }
+  }
+
+- Then use $project:
+  {
+    "_id": 0,
+    "firstName": 1,
+    "lastName": 1,
+    "email": 1,
+    "interactionCount": 1
+  }
+
+- Always start from a raw_* collection (not sna_student_raw) when the question involves counting or ranking interactions (e.g., “most friends”, “who gave the most advice”).
+
+Return only the JSON object.
+"""
+
+def clean_llm_response(content: str):
+    """
+    Extract only the first valid JSON object from a noisy LLM response.
+    """
+    content = content.replace("```json", "").replace("```", "").strip()
+
+    # Extract the FIRST valid JSON object that starts with '{' and ends with matching '}'
+    stack = []
+    start_index = None
+
+    for i, char in enumerate(content):
+        if char == '{':
+            if not stack:
+                start_index = i
+            stack.append('{')
+        elif char == '}':
+            if stack:
+                stack.pop()
+                if not stack and start_index is not None:
+                    json_block = content[start_index:i+1]
+                    return json_block  # Return the first full JSON object
+
+    # If no valid block found
+    return content
+
+def generate_query_plan(user_prompt: str):
+    payload = {
+        "model": TOGETHER_MODEL,
+        "messages": [
+            {"role": "system", "content": SYSTEM_INSTRUCTION},
+            {"role": "user", "content": user_prompt}
+        ]
+    }
+
     try:
-        df_disrespect = pd.DataFrame(list(db.raw_disrespect.find({}, {"_id": 0}))).dropna()
-        df_feedback   = pd.DataFrame(list(db.raw_feedback.find({}, {"_id": 0}))).dropna()
-        df_friendship = pd.DataFrame(list(db.raw_friendship.find({}, {"_id": 0}))).dropna()
-        df_influence  = pd.DataFrame(list(db.raw_influential.find({}, {"_id": 0}))).dropna()
-        df_advice     = pd.DataFrame(list(db.raw_advice.find({}, {"_id": 0}))).dropna()
+        response = requests.post("https://api.together.xyz/chat/completions", headers=headers, json=payload)
+        result = response.json()
 
-        edges = {
-            "Disrespect":      df_disrespect[['source','target']].to_numpy().tolist(),
-            "Feedback":        df_feedback[['source','target']].to_numpy().tolist(),
-            "Friends":         df_friendship[['source','target']].to_numpy().tolist(),
-            "Influence":       df_influence[['source','target']].to_numpy().tolist(),
-            "Advice":          df_advice[['source','target']].to_numpy().tolist()
-        }
+        # DEBUG logs
+        print("== RAW LLM RESPONSE ==")
+        print(result)
 
-        flat_edges = []
-        for label, pairs in edges.items():
-            for src, tgt in pairs:
-                flat_edges.append({
-                    "source": int(src),
-                    "target": int(tgt),
-                    "label":  label
-                })
-        return flat_edges
-    except Exception as e:
-        return {"error": str(e)}
+        content = result["choices"][0]["message"]["content"]
+        print("== LLM CONTENT ==")
+        print(content)
 
-# trigger GNNs model
-from gnn_runner import run_gnn_pipeline
-
-@app.get("/gnn_trigger", response_class=HTMLResponse)
-async def show_trigger_page(request: Request):
-    return templates.TemplateResponse("trigger_gnn.html", {"request": request})
-
-import os
-
-print("Current working directory:", os.getcwd())
-
-@app.post("/run_gnn")
-async def run_gnn():
-    try:
-        clusters = run_gnn_pipeline()
-        if clusters is None:
-            return {"status": "error", "message": "GNN processing failed."}
-
-        db["gnn_results"].delete_many({})
-        db["gnn_results"].insert_many(clusters.to_dict("records"))
-
-        return {"status": "success", "message": "GNN executed successfully."}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-@app.post("/run_ga")
-async def run_ga():
-    try:
-        clusters = run_ga_allocation(perf_field = "Perc_Academic")
-        if clusters is None:
-            return {"status": "error", "message": "GA processing failed."}
-
-        db["result_node_cluster"].delete_many({})
-        db["result_node_cluster"].insert_many(clusters.to_dict("records"))
-
-        return {"status": "success", "message": "GA executed successfully."}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-    # get nodes data
-
-@app.api_route("/run_gnn_all", methods=["GET", "POST"])
-async def run_all():
-    try:
-        # Step 1: Run GNN
-        gnn_clusters = run_gnn_pipeline()
-        if gnn_clusters is None:
-            return {"status": "error", "step": "gnn", "message": "GNN processing failed."}
-
-        # Step 2: Run GA (after GNN)
-        ga_clusters = run_ga_allocation(perf_field="Perc_Academic")
-        print(ga_clusters)
-        if ga_clusters is None:
-            return {"status": "error", "step": "ga", "message": "GA processing failed."}
-
-        db["result_node_cluster"].delete_many({})
-        db["result_node_cluster"].insert_many(ga_clusters)
-        return {"status": "success", "message": "Both GNN and GA executed successfully."}
-
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-@app.get("/api/result_node_cluster")
-def get_result_edges_info():
-    try:
-        collection = db["result_node_cluster"]
-        documents = list(collection.find({}, {"_id": 0}))
-        sanitized_docs = [sanitize(doc) for doc in documents]
-        return sanitized_docs
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/routes")
-def get_routes():
-    return [route.path for route in app.routes]
-@app.post("/upload_csv/{collection_name}")
-async def upload_csv(collection_name: str, file: UploadFile = File(...)):
-    try:
-        if not file.filename.endswith(".csv"):
-            raise HTTPException(status_code=400, detail="Only CSV files are supported.")
-
-        contents = await file.read()
-        print(f"?? Received file: {file.filename} (Size: {len(contents)} bytes)")
-
-        # Load the content as a string (safe decoding)
-        decoded = contents.decode("utf-8", errors="replace")
-
-        # Now read with Pandas
-        from io import StringIO
-        df = pd.read_csv(StringIO(decoded))
-        print("?? DataFrame shape:", df.shape)
-        print(df.head())
-
-        # Replace NaN with None safely
-        records = df.where(pd.notnull(df), None).to_dict(orient="records")
-        print(f"?? Total records parsed: {len(records)}")
-
-        result = db[collection_name].insert_many(records)
-        print(f"? Inserted {len(result.inserted_ids)} documents into '{collection_name}'")
-
-        return {"status": "success", "inserted": len(result.inserted_ids)}
-    except Exception as e:
-        print("? Upload error:", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-# update weights factor
-@app.get("/weights", response_class=HTMLResponse)
-async def get_weights_form(request: Request):
-    return templates.TemplateResponse("weights.html", {"request": request})
-
-
-@app.post("/update_weights")
-async def update_weights(
-        friendship: int = Form(...),
-        influence: int = Form(...),
-        feedback: int = Form(...),
-        advice: int = Form(...),
-        disrespect: int = Form(...),
-        affiliation: int = Form(...)
-):
-    try:
-        db["sna_weights"].delete_many({})
-        db["sna_weights"].insert_one({
-            "friendship": friendship,
-            "influence": influence,
-            "feedback": feedback,
-            "advice": advice,
-            "disrespect": disrespect,
-            "affiliation": affiliation
-        })
-        return {"status": "success", "message": "Weights updated."}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-# get all edges
-@app.get("/api/edges")
-def get_all_edges():
-    try:
-        documents = list(collection.find())
-        return JSONResponse(content=dumps(documents), media_type="application/json")
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.post("/upload_json/{collection_name}")
-async def upload_json(collection_name: str, file: UploadFile = File(...)):
-    try:
-        contents = await file.read()
-        data = json.loads(contents.decode("utf-8"))
-
-        # Ensure it's a list of records
-        if isinstance(data, dict):
-            data = [data]
-        elif not isinstance(data, list):
-            raise ValueError("JSON file must contain a list or a single JSON object.")
-
-        result = db[collection_name].insert_many(data)
-        return {"status": "success", "inserted": len(result.inserted_ids)}
-    except Exception as e:
-        print("? Upload JSON error:", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ? upload csv path by hassan
-@app.post("/upload_raw_csv")
-async def upload_raw_csv(file: UploadFile = File(...)):
-    try:
-        contents = await file.read()
-        df = pd.read_csv(pd.io.common.BytesIO(contents))
-
-        # ?? Replace these with your actual columns
-        participant_df = df[["participant_id", "age", "gender", "school_id", "grade", "cluster"]]
-        school_df = df[["school_id", "school_name", "location"]].drop_duplicates()
-        advice_df = df[["participant_id", "advice_to_id", "advice_strength"]]
-        feedback_df = df[["participant_id", "feedback_to_id", "feedback_strength"]]
-        disrespect_df = df[["participant_id", "disrespect_to_id", "disrespect_strength"]]
-        influence_df = df[["participant_id", "influence_to_id", "influence_strength"]]
-        friendship_df = df[["participant_id", "friendship_to_id", "friendship_strength"]]
-
-        tables = {
-            "participant": participant_df,
-            "school": school_df,
-            "advice": advice_df,
-            "feedback": feedback_df,
-            "disrespect": disrespect_df,
-            "influence": influence_df,
-            "friendship": friendship_df
-        }
-
-        inserted_counts = {}
-        for name, table_df in tables.items():
-            table_df = table_df.where(pd.notnull(table_df), None)
-            records = table_df.to_dict(orient="records")
-            db[name].delete_many({})
-            if records:
-                db[name].insert_many(records)
-                inserted_counts[name] = len(records)
-            else:
-                inserted_counts[name] = 0
-
-        return {"status": "success", "inserted": inserted_counts}
+        # Clean and safely parse
+        cleaned = clean_llm_response(content)
+        return json.loads(cleaned)
 
     except Exception as e:
-        print("? CSV Split Upload Error:", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/", response_class=HTMLResponse)
-def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-# new route for new agent
-@app.post("/ask_agent")
-
-async def ask_agent(user_prompt: str = Form(...)):
-    print("User prompt received:", user_prompt)
-    if not user_prompt:
-        return {"error": "Missing prompt."}
-
-    # Step 1: Get query plan from LLM
-    query_plan = generate_query_plan(user_prompt)
-
-    if "error" in query_plan:
+        print("Error during query planning:", e)
         return {
-            "error": "Failed to generate query plan from LLM.",
-            "detail": query_plan.get("error"),
-            "raw": query_plan.get("raw_response")
+            "error": str(e),
+            "raw_response": content if "content" in locals() else None
         }
-
-    # Step 2: Execute MongoDB query
-    collection = query_plan.get("collection")
-    pipeline = query_plan.get("pipeline")
-    filter_ = query_plan.get("filter")
-    projection = query_plan.get("projection", [])
-    sort = query_plan.get("sort")
-    limit = query_plan.get("limit", 100)
-
-    if not collection:
-        return {"error": "Missing collection name in query plan."}
-
-    try:
-        if pipeline:
-            # Aggregation query
-            results = list(db[collection].aggregate(pipeline))
-        else:
-            # Simple find query
-            proj_dict = {field: 1 for field in projection} if projection else {}
-            cursor = db[collection].find(filter_ or {}, proj_dict)
-
-            if sort:
-                cursor = cursor.sort(sort)
-            if limit:
-                cursor = cursor.limit(limit)
-
-            results = list(cursor)
-
-        # Clean ObjectIds for JSON output
-        results = [sanitize(doc) for doc in results]
-        # for doc in results:
-        #     doc["_id"] = str(doc.get("_id", ""))
-
-        return {
-            "explanation": query_plan.get("explanation", ""),
-            "results": results
-        }
-
-    except Exception as e:
-        return {
-            "error": "Failed to execute MongoDB query.",
-            "detail": str(e)
-        }
-# integrate code with the AI agent, the ai agent use this route
-@app.post("/generate", response_class=HTMLResponse)
-def generate(request: Request, user_prompt: str = Form(...)):
-    # Get query plan from LLM
-    query_plan = generate_query_plan(user_prompt)
-    print("== QUERY PLAN ==")
-    print("LLM Plan:", query_plan)
-
-    collection_name = query_plan.get("collection")
-    fields = query_plan.get("projection")
-    if not fields:
-    # fallback if projection is empty but we have $exists filter (implied fields)
-        fields = list(query_plan.get("filter", {}).get("$and", [{}])[0].keys())
-
-    mongo_filter = query_plan.get("filter", {})
-    # Ensure sort is in correct format: list of [field, direction]
-    raw_sort = query_plan.get("sort", [])
-    sort = []
-
-    for item in raw_sort:
-        if isinstance(item, list) and len(item) == 2:
-            sort.append(tuple(item))
-        elif isinstance(item, str):  # fallback: assume descending sort
-            sort.append((item, -1))
-    limit = query_plan.get("limit", 100)
-    endpoint = query_plan.get("endpoint")
-    if not endpoint:
-        # Fallback to a default name based on timestamp or a counter
-        import time
-        endpoint = f"endpoint_{int(time.time())}"
-
-    # Construct projection
-    if not fields or fields == ["*"]:
-        projection = None
-    else:
-        projection = {field: 1 for field in fields}
-        if "ID" in fields:
-            projection["_id"] = 1
-        else:
-            projection["_id"] = 0
-
-    # ?? Debug: Immediate execution and print of query
-    print(f"\n--- Executing MongoDB Preview Query ---")
-    print("Collection:", collection_name)
-    print("Projection:", projection)
-    print("Filter:", mongo_filter)
-    print("Sort:", sort)
-    print("Limit:", limit)
-    if not collection_name:
-        return {"error": "Query plan did not include a valid collection name."}
-
-    test_cursor = db[collection_name].find(mongo_filter, projection or {})
-    if sort:
-        test_cursor = test_cursor.sort(sort)
-    if limit:
-        test_cursor = test_cursor.limit(limit)
-
-    preview_results = [sanitize(doc) for doc in test_cursor]
-    print(f"Returned {len(preview_results)} records (preview)")
-    for doc in preview_results[:5]:
-        print(doc)
-
-    route_path = f"/{collection_name}/{endpoint}"
-
-    @app.get(route_path)
-    def dynamic():
-        cursor = db[collection_name].find(mongo_filter, projection or {})
-        if sort:
-            cursor = cursor.sort(sort)
-        if limit:
-            cursor = cursor.limit(limit)
-        results = []
-        for doc in cursor:
-            if "_id" in doc:
-                doc["_id"] = str(doc["_id"])  # Convert ObjectId to string
-            results = [sanitize(doc) for doc in cursor]
-            # results.append(doc)
-        return results
-
-    return templates.TemplateResponse("result.html", {
-        "request": request,
-        "url": route_path,
-        "fields": fields,
-        "collection": collection_name
-    })
-
-
-# ~~~~~~~~~~ Cluster Generation ~~~~~~~~~~~~~~~ #
-from pydantic import BaseModel
-
-class ClusterWeights(BaseModel):
-    friendship: float
-    influence: float
-    feedback: float
-    advice: float
-    disrespect: float
-    affiliation: float
-
-@app.post("/update_weights/", status_code=status.HTTP_204_NO_CONTENT)
-def update_weights(weights: ClusterWeights):
-    col = db.sna_weights
-    first_doc = col.find_one()
-    query = {"_id": first_doc["_id"]}
-    col.update_one(query, {"$set": weights.dict()})
-    return None
-
-@app.get("/get_weights/", response_model=ClusterWeights)
-def get_weights() -> ClusterWeights:
-    doc = db.sna_weights.find_one({}, {"_id": 0})
-    if not doc:
-        raise HTTPException(status_code=404, detail="No weights config found")
-    return doc
