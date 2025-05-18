@@ -17,19 +17,16 @@ def run_ga_allocation(
     mutpb: float = 0.3,
     seed: int = 42
 ):
-    """
-    1) Connect to MongoDB and build an ID→Name map
-    2) Load cluster assignments from JSON list
-    3) Pull raw survey + performance data, merge and fill missing
-    4) Set up & run a multi-objective GA
-    5) Write cluster and edge docs back to MongoDB with id fields
-    6) Return cluster_docs and edge_docs as JSON
-    """
     # Connect & name map
     if mongo_uri is None:
         mongo_uri = os.environ.get("MONGO_URI", "mongodb://3.105.47.11:27017")
     client = MongoClient(mongo_uri)
     db = client[db_name]
+
+    # Load class size weight slider
+    weights = db.sna_weights.find_one({}, {"_id": 0})
+    csw_pct = float(weights.get("classSize", 50))
+    csw = csw_pct / 100.0 
 
     # Build Participant-ID → Name map
     id_name_map = {}
@@ -85,7 +82,8 @@ def run_ga_allocation(
 
     def eval_assignment(ind):
         sizes = np.array(list(Counter(ind).values()), dtype=float)
-        size_balance = float(np.std(sizes))
+        raw_balance = float(np.std(sizes))
+        size_balance = raw_balance * csw
         groups = {}
         for idx, g in enumerate(ind): groups.setdefault(g, []).append(idx)
         class_means = [np.mean(perf_array[idxs]) for idxs in groups.values()]
@@ -128,7 +126,6 @@ def run_ga_allocation(
             "cluster": int(grp)
         })
 
-
     original = gnn_labels
     final = best
     changes = sum(1 for a, b in zip(original, final) if a != b)
@@ -136,6 +133,4 @@ def run_ga_allocation(
 
     print(f"GA changed {changes} students ({percent_changed:.2f}%) from the GNN result")
 
-
     return cluster_docs
-
