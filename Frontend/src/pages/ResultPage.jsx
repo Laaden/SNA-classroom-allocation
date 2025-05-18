@@ -35,15 +35,16 @@ export default function ResultPage() {
 
         const nodesData = await nodesRes.json();
         const edgesData = await edgesRes.json();
+        const noLoops = edgesData.filter(e => e.source !== e.target);
 
         if (!Array.isArray(nodesData) || !Array.isArray(edgesData)) {
           throw new Error("API returned non-array data");
         }
 
         setAllNodes(nodesData);
-        setAllEdges(edgesData);
+        setAllEdges(noLoops);
 
-        const foundClusters = [...new Set(nodesData.map(n => n.cluster_number))];
+        const foundClusters = [...new Set(nodesData.map(n => n.cluster))];
         setClusters(foundClusters);
         if (foundClusters.length > 0) {
           setSelectedCluster(foundClusters[0]);
@@ -58,7 +59,7 @@ export default function ResultPage() {
   useEffect(() => {
     if (!selectedCluster || !Array.isArray(allNodes) || !Array.isArray(allEdges)) return;
 
-    const nodes = allNodes.filter(n => n.cluster_number === selectedCluster);
+    const nodes = allNodes.filter(n => n.cluster === selectedCluster);
     const studentIds = new Set(nodes.map(n => n.id));
 
     const edges = allEdges
@@ -77,6 +78,9 @@ export default function ResultPage() {
 
     setStudentList(nodes.map(n => n.label));
     setGraphData({ nodes: graphNodes, edges });
+
+    console.log(graphNodes)
+    console.log(edges)
   }, [selectedCluster, allNodes, allEdges]);
 
   const handleClusterChange = (e) => {
