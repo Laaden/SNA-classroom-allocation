@@ -55,6 +55,7 @@ export default function WeightsPage() {
   };
 
   const handleDatasetUpload = async (e) => {
+    console.log("🚨 handleDatasetUpload triggered");
     e.preventDefault();
     if (!collectionName) {
       setUploadMessage("Please enter a collection name.");
@@ -72,7 +73,7 @@ export default function WeightsPage() {
 
     try {
       const response = await fetch(
-        `https://3.105.47.11:8000/upload_csv/${collectionName}`,
+        `http://3.105.47.11:8000/upload_csv/${collectionName}`,
         { method: "POST", body: formData }
       );
 
