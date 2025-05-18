@@ -299,6 +299,67 @@ async def upload_raw_csv(file: UploadFile = File(...)):
         print("❌ CSV Split Upload Error:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+# new route for new agent
+@app.post("/ask_agent")
+
+async def ask_agent(user_prompt: str = Form(...)):
+    print("User prompt received:", user_prompt)
+    if not user_prompt:
+        return {"error": "Missing prompt."}
+
+    # Step 1: Get query plan from LLM
+    query_plan = generate_query_plan(user_prompt)
+
+    if "error" in query_plan:
+        return {
+            "error": "Failed to generate query plan from LLM.",
+            "detail": query_plan.get("error"),
+            "raw": query_plan.get("raw_response")
+        }
+
+    # Step 2: Execute MongoDB query
+    collection = query_plan.get("collection")
+    pipeline = query_plan.get("pipeline")
+    filter_ = query_plan.get("filter")
+    projection = query_plan.get("projection", [])
+    sort = query_plan.get("sort")
+    limit = query_plan.get("limit", 100)
+
+    if not collection:
+        return {"error": "Missing collection name in query plan."}
+
+    try:
+        if pipeline:
+            # Aggregation query
+            results = list(db[collection].aggregate(pipeline))
+        else:
+            # Simple find query
+            proj_dict = {field: 1 for field in projection} if projection else {}
+            cursor = db[collection].find(filter_ or {}, proj_dict)
+
+            if sort:
+                cursor = cursor.sort(sort)
+            if limit:
+                cursor = cursor.limit(limit)
+
+            results = list(cursor)
+
+        # Clean ObjectIds for JSON output
+        results = [sanitize(doc) for doc in results]
+        # for doc in results:
+        #     doc["_id"] = str(doc.get("_id", ""))
+
+        return {
+            "explanation": query_plan.get("explanation", ""),
+            "results": results
+        }
+
+    except Exception as e:
+        return {
+            "error": "Failed to execute MongoDB query.",
+            "detail": str(e)
+        }
+
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
