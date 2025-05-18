@@ -235,12 +235,12 @@ export default function WeightsPage() {
               <input
                 type="range"
                 id="classSizeWeight"
-                min="0"
+                min="1"
                 max="100"
                 value={classSizeWeight}
                 onChange={e => setClassSizeWeight(Number(e.target.value))}
               />
-              <span>{classSizeWeight}%</span>
+              <span>{classSizeWeight}</span>
             </div>
             <div className="form-group">
               <label htmlFor="friendshipWeight">Friendship Multiplier:</label>

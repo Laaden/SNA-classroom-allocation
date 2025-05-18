@@ -7,9 +7,12 @@ export default function GraphVis({ nodes, edges }) {
 
   useEffect(() => {
     if (containerRef.current && nodes.length > 0) {
+
+      const merged = simplifyEdges(edges);
+
       const data = {
         nodes: new DataSet(nodes),
-        edges: new DataSet(edges)
+        edges: new DataSet(merged)
       };
 
       const options = {
@@ -23,7 +26,7 @@ export default function GraphVis({ nodes, edges }) {
           arrows: { to: { enabled: true, scaleFactor: 0.6 } },
           font: { align: "middle", size: 12 },
           smooth: {
-            type: "cubicBezier",
+            type: "dynamic",
             forceDirection: "horizontal",
             roundness: 0.4
           }
@@ -58,3 +61,33 @@ export default function GraphVis({ nodes, edges }) {
     />
   );
 }
+
+// here we merge edges that are bidirected
+// so that it doesnt visually clutter the network graph
+function simplifyEdges(edges) {
+  const groups = edges.reduce((acc, { from, to, label, color }) => {
+    const key = [from, to].sort().join('-')
+    acc[key] = acc[key] || []
+    acc[key].push({ from, to, label, color })
+    return acc
+  }, {})
+
+  const dict = Object.values(groups).map((group, id) => {
+    const { from, to, label, color } = group[0]
+    const bidirectional = group.some(e => e.from === to && e.to === from)
+
+    const arrows = bidirectional
+      ? {
+        to: { enabled: true, scaleFactor: 0.6 },
+        from: { enabled: true, scaleFactor: 0.6 },
+      }
+      : {
+        to: { enabled: true, scaleFactor: 0.6 }
+      }
+
+    return { id, from, to, label, color, arrows }
+  })
+
+  return dict
+}
+

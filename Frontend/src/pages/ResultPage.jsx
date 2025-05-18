@@ -136,9 +136,12 @@ export default function ResultPage() {
               <div className="group-selection">
                 <label htmlFor="clusterSelect"><strong>Select a Class:</strong></label>
                 <select id="clusterSelect" value={selectedCluster} onChange={handleClusterChange}>
-                  {clusters.map((cluster, index) => (
-                    <option key={index} value={cluster}>{cluster}</option>
-                  ))}
+                  {clusters.length === 0
+                    ? <option value="">Loading classes…</option>
+                    :
+                    clusters.map((cluster, index) => (
+                      <option key={index} value={cluster}>{cluster}</option>
+                    ))}
                 </select>
               </div>
 

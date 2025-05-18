@@ -448,3 +448,11 @@
   animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+
+#clusterSelect,
+#edgeFilter {
+  min-width: 180px;
+  padding: 0.4rem;
+  font-size: 1rem;
+}
