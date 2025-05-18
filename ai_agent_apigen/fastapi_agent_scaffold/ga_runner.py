@@ -90,7 +90,11 @@ def run_ga_allocation(
         for idx, g in enumerate(ind): groups.setdefault(g, []).append(idx)
         class_means = [np.mean(perf_array[idxs]) for idxs in groups.values()]
         worst_mean = float(np.min(class_means))
-        return size_balance, worst_mean
+        # proportion changed from gnn to ga
+        gnn_diff = sum(a != b for a, b in zip(ind, gnn_labels)) / len(ind)
+        gnn_penalty = 1.0 * gnn_diff
+
+        return size_balance + gnn_penalty, worst_mean
 
     toolbox.register("evaluate", eval_assignment)
     toolbox.register("mate", tools.cxTwoPoint)
@@ -98,7 +102,12 @@ def run_ga_allocation(
     toolbox.register("select", tools.selNSGA2)
 
     np.random.seed(seed)
-    pop = toolbox.select([toolbox.individual() for _ in range(pop_size)], k=pop_size)
+
+    # use gnn results as base population
+    gnn_labels = df_clusters.set_index("student_id").loc[student_ids]["cluster"].tolist()
+    initial_population = [creator.Individual(list(gnn_labels)) for _ in range(pop_size)]
+    pop = toolbox.select(initial_population, k=pop_size)
+
     stats = tools.Statistics(key=lambda ind: ind.fitness.values)
     stats.register("avg_balance", lambda vs: np.mean([v[0] for v in vs]))
     stats.register("avg_worst", lambda vs: np.mean([v[1] for v in vs]))
@@ -118,6 +127,15 @@ def run_ga_allocation(
             "label": id_name_map.get(int(sid), ""),
             "cluster": int(grp)
         })
+
+
+    original = gnn_labels
+    final = best
+    changes = sum(1 for a, b in zip(original, final) if a != b)
+    percent_changed = changes / len(final) * 100
+
+    print(f"GA changed {changes} students ({percent_changed:.2f}%) from the GNN result")
+
 
     return cluster_docs
 

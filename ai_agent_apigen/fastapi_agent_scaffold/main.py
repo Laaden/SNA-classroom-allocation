@@ -211,7 +211,6 @@ async def update_weights(
         feedback: int = Form(...),
         advice: int = Form(...),
         disrespect: int = Form(...),
-        affiliation: int = Form(...),
         classSize: int = Form(...),
         academic: int = Form(...),
 ):
@@ -223,7 +222,6 @@ async def update_weights(
             "feedback": feedback,
             "advice": advice,
             "disrespect": disrespect,
-            "affiliation": affiliation,
             "classSize": classSize,
             "academic": academic,
         })
