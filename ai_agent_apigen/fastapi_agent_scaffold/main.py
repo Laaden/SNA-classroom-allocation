@@ -38,7 +38,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Allow frontend URL
+    allow_origins=["*"],  # Allow frontend URL
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
@@ -134,7 +134,7 @@ async def run_ga():
 
     # get nodes data
 
-@app.post("/run_gnn_all")
+@app.api_route("/run_gnn_all", methods=["GET", "POST"])
 async def run_all():
     try:
         # Step 1: Run GNN
@@ -171,11 +171,19 @@ def get_routes():
 @app.post("/upload_csv/{collection_name}")
 async def upload_csv(collection_name: str, file: UploadFile = File(...)):
     try:
+        if not file.filename.endswith(".csv"):
+            raise HTTPException(status_code=400, detail="Only CSV files are supported.")
+
         contents = await file.read()
         print(f"📄 Received file: {file.filename} (Size: {len(contents)} bytes)")
 
-        df = pd.read_csv(pd.io.common.BytesIO(contents))
-        print("🧮 DataFrame loaded:")
+        # Load the content as a string (safe decoding)
+        decoded = contents.decode("utf-8", errors="replace")
+
+        # Now read with Pandas
+        from io import StringIO
+        df = pd.read_csv(StringIO(decoded))
+        print("🧮 DataFrame shape:", df.shape)
         print(df.head())
 
         # Replace NaN with None safely
@@ -383,12 +391,12 @@ def generate(request: Request, user_prompt: str = Form(...)):
 from pydantic import BaseModel
 
 class ClusterWeights(BaseModel):
-    friendship: int
-    influence: int
-    feedback: int
-    advice: int
-    disrespect: int
-    affiliation: int
+    friendship: float
+    influence: float
+    feedback: float
+    advice: float
+    disrespect: float
+    affiliation: float
 
 @app.post("/update_weights/", status_code=status.HTTP_204_NO_CONTENT)
 def update_weights(weights: ClusterWeights):

@@ -1,19 +1,161 @@
 nohup: ignoring input
-INFO:     Started server process [16877]
+INFO:     Started server process [19736]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0Current working directory: /home/ubuntu/sna_code/SNA-classroom-allocation/ai_agent_apigen/fastapi_agent_scaffold
+INFO:     49.185.166.197:38237 - "GET / HTTP/1.1" 200 OK
+📄 Received file: advice.csv (Size: 1845246 bytes)
+🧮 DataFrame shape: (115327, 2)
+    source   target
+0  32540.0  32420.0
+1  32540.0  32468.0
+2  32540.0  32469.0
+3  32540.0  32409.0
+4  32540.0  32528.0
+📦 Total records parsed: 115327
+✅ Inserted 115327 documents into 'raw_advice'
+INFO:     49.185.166.197:38238 - "POST /upload_csv/raw_advice HTTP/1.1" 200 OK
+INFO:     194.127.104.11:59654 - "GET /get_weights HTTP/1.1" 307 Temporary Redirect
+INFO:     194.127.104.11:59654 - "GET /get_weights/ HTTP/1.1" 200 OK
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     127.0.0.1:35770 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:35760 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:35020 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:35008 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:45364 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:45366 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:45376 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:45384 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     127.0.0.1:50694 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:50698 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     127.0.0.1:32782 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:32788 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     194.127.104.11:50994 - "POST /generate HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 403, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/applications.py", line 112, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 714, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 734, in app
+    await route.handle(scope, receive, send)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/fastapi/routing.py", line 301, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/fastapi/routing.py", line 214, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/starlette/concurrency.py", line 37, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2470, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/ubuntu/sna/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 967, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sna_code/SNA-classroom-allocation/ai_agent_apigen/fastapi_agent_scaffold/main.py", line 309, in generate
+    query_plan = generate_query_plan(user_prompt)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/sna_code/SNA-classroom-allocation/ai_agent_apigen/fastapi_agent_scaffold/llm_assistant.py", line 45, in generate_query_plan
+    raise EnvironmentError("OPENROUTER_API_KEY not set in environment variables.")
+OSError: OPENROUTER_API_KEY not set in environment variables.
+INFO:     127.0.0.1:50630 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:50636 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:50648 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:50652 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     49.185.166.197:37701 - "GET / HTTP/1.1" 200 OK
+INFO:     194.127.104.11:22825 - "OPTIONS /update_weights/ HTTP/1.1" 200 OK
+INFO:     194.127.104.11:22825 - "POST /update_weights/ HTTP/1.1" 204 No Content
 Starting GNN pipeline...
-📤 stdout: {"assignments":[{"id":32459,"cluster":2},{"id":32432,"cluster":2},{"id":32481,"cluster":5},{"id":32413,"cluster":2},{"id":32491,"cluster":4},{"id":32507,"cluster":3},{"id":32396,"cluster":4},{"id":32517,"cluster":2},{"id":32550,"cluster":3},{"id":32520,"cluster":6},{"id":32469,"cluster":3},{"id":32425,"cluster":2},{"id":32484,"cluster":1},{"id":32412,"cluster":5},{"id":32445,"cluster":3},{"id":32501,"cluster":1},{"id":32465,"cluster":1},{"id":32391,"cluster":1},{"id":32411,"cluster":3},{"id":32464,"cluster":3},{"id":32438,"cluster":5},{"id":32467,"cluster":3},{"id":32420,"cluster":2},{"id":32500,"cluster":6},{"id":32479,"cluster":1},{"id":32561,"cluster":6},{"id":32439,"cluster":3},{"id":32506,"cluster":5},{"id":32544,"cluster":4},{"id":32474,"cluster":3},{"id":32394,"cluster":3},{"id":32558,"cluster":3},{"id":32494,"cluster":5},{"id":32502,"cluster":2},{"id":32528,"cluster":2},{"id":32427,"cluster":4},{"id":32460,"cluster":2},{"id":32457,"cluster":2},{"id":32538,"cluster":3},{"id":32546,"cluster":2},{"id":32559,"cluster":3},{"id":32419,"cluster":1},{"id":32489,"cluster":1},{"id":32472,"cluster":1},{"id":32473,"cluster":3},{"id":32543,"cluster":2},{"id":32565,"cluster":2},{"id":32529,"cluster":2},{"id":32421,"cluster":2},{"id":32461,"cluster":1},{"id":32537,"cluster":1},{"id":32511,"cluster":5},{"id":32496,"cluster":1},{"id":32504,"cluster":1},{"id":32417,"cluster":3},{"id":32525,"cluster":3},{"id":32395,"cluster":5},{"id":32480,"cluster":1},{"id":32405,"cluster":4},{"id":32482,"cluster":5},{"id":32564,"cluster":1},{"id":32493,"cluster":1},{"id":32449,"cluster":6},{"id":32436,"cluster":3},{"id":32423,"cluster":3},{"id":32478,"cluster":4},{"id":32433,"cluster":2},{"id":32452,"cluster":1},{"id":32414,"cluster":3},{"id":32471,"cluster":1},{"id":32490,"cluster":2},{"id":32400,"cluster":4},{"id":32448,"cluster":2},{"id":32392,"cluster":2},{"id":32539,"cluster":1},{"id":32397,"cluster":2},{"id":32415,"cluster":2},{"id":32532,"cluster":1},{"id":32422,"cluster":2},{"id":32547,"cluster":1},{"id":32533,"cluster":3},{"id":32416,"cluster":2},{"id":32443,"cluster":4},{"id":32487,"cluster":1},{"id":32527,"cluster":6},{"id":32534,"cluster":2},{"id":32560,"cluster":1},{"id":32477,"cluster":4},{"id":32406,"cluster":2},{"id":32475,"cluster":1},{"id":32407,"cluster":2},{"id":32495,"cluster":5},{"id":32409,"cluster":2},{"id":32515,"cluster":5},{"id":32446,"cluster":3},{"id":32483,"cluster":1},{"id":32463,"cluster":3},{"id":32505,"cluster":5},{"id":32398,"cluster":6},{"id":32470,"cluster":4},{"id":32497,"cluster":5},{"id":32518,"cluster":4},{"id":32535,"cluster":4},{"id":32498,"cluster":2},{"id":32444,"cluster":1},{"id":32485,"cluster":3},{"id":32399,"cluster":2},{"id":32521,"cluster":1},{"id":32541,"cluster":1},{"id":32510,"cluster":3},{"id":32551,"cluster":2},{"id":32408,"cluster":2},{"id":32513,"cluster":3},{"id":32486,"cluster":1},{"id":32536,"cluster":5},{"id":32531,"cluster":1},{"id":32563,"cluster":1},{"id":32552,"cluster":1},{"id":32526,"cluster":1},{"id":32428,"cluster":3},{"id":32542,"cluster":2},{"id":32393,"cluster":4},{"id":32441,"cluster":1},{"id":32523,"cluster":6},{"id":32456,"cluster":3},{"id":32540,"cluster":2},{"id":32492,"cluster":6},{"id":32514,"cluster":4},{"id":32458,"cluster":1},{"id":32418,"cluster":4},{"id":32429,"cluster":5},{"id":32401,"cluster":4},{"id":32466,"cluster":3},{"id":32462,"cluster":1},{"id":32451,"cluster":3},{"id":32437,"cluster":3},{"id":32524,"cluster":5},{"id":32453,"cluster":1},{"id":32554,"cluster":2},{"id":32549,"cluster":2},{"id":32455,"cluster":2},{"id":32516,"cluster":1},{"id":32440,"cluster":2},{"id":32454,"cluster":5},{"id":32476,"cluster":2},{"id":32509,"cluster":1},{"id":32488,"cluster":2},{"id":32450,"cluster":5},{"id":32410,"cluster":1},{"id":32434,"cluster":4},{"id":32553,"cluster":2},{"id":32556,"cluster":3},{"id":32424,"cluster":1},{"id":32545,"cluster":1},{"id":32555,"cluster":3},{"id":32403,"cluster":6},{"id":32426,"cluster":4},{"id":32512,"cluster":1},{"id":32468,"cluster":2},{"id":32499,"cluster":2},{"id":32548,"cluster":1},{"id":32404,"cluster":1},{"id":32435,"cluster":1},{"id":32447,"cluster":1},{"id":32503,"cluster":3},{"id":32530,"cluster":5},{"id":32431,"cluster":4},{"id":32519,"cluster":3},{"id":32430,"cluster":6},{"id":32442,"cluster":1},{"id":32402,"cluster":2},{"id":32508,"cluster":4},{"id":32522,"cluster":2},{"id":32562,"cluster":1},{"id":32557,"cluster":1}]}
-🐛 stderr: [ Info: Starting worker...
-
-Cluster DF columns: Index(['id', 'cluster'], dtype='object')
-Cluster DF preview:
-       id  cluster
-0  32459        2
-1  32432        2
-2  32481        5
-3  32413        2
-4  32491        4
-✅ GNN pipeline complete
-INFO:     127.0.0.1:60146 - "POST /run_gnn_all HTTP/1.1" 200 OK
+❌ GNN pipeline error: "None of [Index(['source', 'target'], dtype='object')] are in the [columns]"
+INFO:     194.127.104.11:22825 - "POST /run_gnn_all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34020 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:34022 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:52766 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:52762 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:40868 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:40870 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     127.0.0.1:53160 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:53164 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     127.0.0.1:44266 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:44274 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+📄 Received file: net_4_Advice.csv (Size: 4418 bytes)
+🧮 DataFrame shape: (367, 2)
+   Source  Target
+0   32531   32562
+1   32531   32554
+2   32444   32476
+3   32444   32448
+4   32450   32450
+📦 Total records parsed: 367
+✅ Inserted 367 documents into 'raw_advice'
+INFO:     49.185.166.197:37873 - "POST /upload_csv/raw_advice HTTP/1.1" 200 OK
+INFO:     49.185.166.197:37920 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42706 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:42720 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+📄 Received file: net_4_Advice.csv (Size: 4418 bytes)
+🧮 DataFrame shape: (367, 2)
+   Source  Target
+0   32531   32562
+1   32531   32554
+2   32444   32476
+3   32444   32448
+4   32450   32450
+📦 Total records parsed: 367
+✅ Inserted 367 documents into 'raw_advice'
+INFO:     49.185.166.197:37921 - "POST /upload_csv/raw_advice HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57988 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:57996 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     127.0.0.1:58010 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:58016 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     127.0.0.1:58028 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:58030 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     127.0.0.1:58032 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:58036 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     127.0.0.1:58040 - "GET /api/result_edges_info HTTP/1.0" 200 OK
+INFO:     127.0.0.1:58042 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     194.127.104.11:27619 - "OPTIONS /update_weights/ HTTP/1.1" 200 OK
+INFO:     194.127.104.11:27619 - "POST /update_weights/ HTTP/1.1" 204 No Content
+Starting GNN pipeline...
+❌ GNN pipeline error: "None of [Index(['source', 'target'], dtype='object')] are in the [columns]"
+INFO:     194.127.104.11:27619 - "POST /run_gnn_all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36872 - "GET /api/result_node_cluster HTTP/1.0" 200 OK
+INFO:     127.0.0.1:36862 - "GET /api/result_edges_info HTTP/1.0" 200 OK
