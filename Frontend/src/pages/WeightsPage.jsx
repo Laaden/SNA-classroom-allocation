@@ -117,7 +117,8 @@ export default function WeightsPage() {
       advice: adviceWeight,
       disrespect: disrespectWeight,
       classSize: classSizeWeight,
-      academic: academicWeight
+      academic: academicWeight,
+      affiliation: adviceWeight
     };
 
     const weightsRes = await fetch("http://3.105.47.11:8000/update_weights/", {
@@ -155,7 +156,59 @@ export default function WeightsPage() {
     setAllocationMessage(`? Error running allocation: ${err.message}`);
     setIsAllocating(false);
   }
-};
+  };
+
+  const handleNaiveAllocation = async (e) => {
+    e.preventDefault();
+    setIsAllocating(true);
+    try {
+      const weightsPayload = {
+        friendship: friendshipWeight,
+        influence: influenceWeight,
+        feedback: feedbackWeight,
+        advice: adviceWeight,
+        disrespect: disrespectWeight,
+        classSize: classSizeWeight,
+        academic: academicWeight,
+        affiliation: adviceWeight
+      };
+
+      const weightsRes = await fetch("http://3.105.47.11:8000/update_weights/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(weightsPayload),
+      });
+
+      if (!weightsRes.ok) {
+        throw new Error("Failed to update weights");
+      }
+
+      const runRes = await fetch("http://3.105.47.11:8000/run_naive_allocate", {
+        method: "POST",
+      });
+
+      const contentType = runRes.headers.get("content-type");
+
+      if (!runRes.ok) {
+        const errorText = await runRes.text();
+        throw new Error(`Naive execution failed: ${errorText}`);
+      }
+
+      let resultMessage = "Naive allocation completed successfully.";
+      if (contentType && contentType.includes("application/json")) {
+        const result = await runRes.json();
+        resultMessage = result.message || resultMessage;
+      }
+
+      setAllocationMessage(resultMessage);
+      navigate("/result");
+
+    } catch (err) {
+      console.error(err);
+      setAllocationMessage(`? Error running naive allocation: ${err.message}`);
+      setIsAllocating(false);
+    }
+  };
 
   return (
     <div>
@@ -307,9 +360,23 @@ export default function WeightsPage() {
               />
               <span>{disrespectWeight.toFixed(1)}</span>
             </div>
-            <button type="submit" disabled={isAllocating}>
-              {isAllocating ? "Running Allocation…" : "Run Allocation"}
-            </button>
+
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button type="submit" disabled={isAllocating}>
+                {isAllocating ? "Running Allocation…" : "Run Allocation"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNaiveAllocation}
+                disabled={isAllocating}
+              >
+                {isAllocating ? "Running Naive Allocation…" : "Run Naive Allocation"}
+              </button>
+            </div>
+
+
+
 
             {isAllocating && (
               <div className="loading-overlay">

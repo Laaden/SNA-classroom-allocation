@@ -1,4 +1,5 @@
 # --- main.py ---
+import random
 from fastapi import FastAPI, HTTPException, Request, Form, status
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -164,6 +165,36 @@ def get_result_edges_info():
         return sanitized_docs
     except Exception as e:
         return {"error": str(e)}
+
+@app.post("/run_naive_allocate")
+def naive_allocate():
+    try:
+        df_raw = pd.DataFrame(list(db.sna_student_raw.find({}, {"Participant-ID": 1, "First-Name": 1, "Last-Name": 1})))
+        df_weights = pd.DataFrame(list(db.sna_weights.find({}, {"_id": 0})))
+        id_name_map = {
+            row["Participant-ID"]: f"{row.get('First-Name', '').strip()} {row.get('Last-Name', '').strip()}".strip()
+            for _, row in df_raw.iterrows()
+        }
+        student_ids = list(id_name_map.keys())
+
+        total_students = len(student_ids)
+        num_classes = max(1, math.ceil(total_students / df_weights.classSize.iloc[0]))
+        random.shuffle(student_ids)
+        assignments = []
+        for idx, sid in enumerate(student_ids):
+            cluster_id = idx % num_classes
+            assignments.append({
+                "id": sid,
+                "label": id_name_map.get(sid, ""),
+                "cluster": cluster_id
+            })
+        db["result_node_cluster"].delete_many({})
+        db["result_node_cluster"].insert_many(assignments)
+        return {"status": "success", "message": "Naively allocated students"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 
 @app.get("/routes")
 def get_routes():
