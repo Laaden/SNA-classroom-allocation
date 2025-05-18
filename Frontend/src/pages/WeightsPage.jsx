@@ -11,7 +11,7 @@ export default function WeightsPage() {
   const [feedbackWeight, setFeedbackWeight] = useState(1.0);
   const [adviceWeight, setAdviceWeight] = useState(1.0);
   const [disrespectWeight, setDisrespectWeight] = useState(1.0);
-  const [affiliationWeight, setAffiliationWeight] = useState(1.0);
+  const [classSizeWeight, setClassSizeWeight] = useState(50);
 
   const [datasetFile, setDatasetFile] = useState(null);
   const [collectionName, setCollectionName] = useState("");
@@ -30,12 +30,12 @@ export default function WeightsPage() {
         const data = await res.json();
         const setters = {
           academic: setAcademicWeight,
+          classSize: setClassSizeWeight,
           friendship: setFriendshipWeight,
           influence: setInfluenceWeight,
           feedback: setFeedbackWeight,
           advice: setAdviceWeight,
-          disrespect: setDisrespectWeight,
-          affiliation: setAffiliationWeight
+          disrespect: setDisrespectWeight
         }
 
         for (const [k, v] of Object.entries(data)) {
@@ -116,7 +116,8 @@ export default function WeightsPage() {
       feedback: feedbackWeight,
       advice: adviceWeight,
       disrespect: disrespectWeight,
-      affiliation: affiliationWeight,
+      classSize: classSizeWeight,
+      academic: academicWeight
     };
 
     const weightsRes = await fetch("http://3.105.47.11:8000/update_weights/", {
@@ -230,12 +231,24 @@ export default function WeightsPage() {
               <span>{academicWeight}%</span>
             </div>
             <div className="form-group">
+              <label htmlFor="classSizeWeight">Class Size Weight:</label>
+              <input
+                type="range"
+                id="classSizeWeight"
+                min="0"
+                max="100"
+                value={classSizeWeight}
+                onChange={e => setClassSizeWeight(Number(e.target.value))}
+              />
+              <span>{classSizeWeight}%</span>
+            </div>
+            <div className="form-group">
               <label htmlFor="friendshipWeight">Friendship Multiplier:</label>
               <input
                 type="range"
                 id="friendshipWeight"
-                min="-2"
-                max="2"
+                min="-10"
+                max="10"
                 step="0.1"
                 value={friendshipWeight}
                 onChange={e => setFriendshipWeight(parseFloat(e.target.value))}
@@ -247,8 +260,8 @@ export default function WeightsPage() {
               <input
                 type="range"
                 id="influenceWeight"
-                min="-2"
-                max="2"
+                min="-10"
+                max="10"
                 step="0.1"
                 value={influenceWeight}
                 onChange={e => setInfluenceWeight(parseFloat(e.target.value))}
@@ -260,8 +273,8 @@ export default function WeightsPage() {
               <input
                 type="range"
                 id="feedbackWeight"
-                min="-2"
-                max="2"
+                min="-10"
+                max="10"
                 step="0.1"
                 value={feedbackWeight}
                 onChange={e => setFeedbackWeight(parseFloat(e.target.value))}
@@ -273,8 +286,8 @@ export default function WeightsPage() {
               <input
                 type="range"
                 id="adviceWeight"
-                min="-2"
-                max="2"
+                min="-10"
+                max="10"
                 step="0.1"
                 value={adviceWeight}
                 onChange={e => setAdviceWeight(parseFloat(e.target.value))}
@@ -286,26 +299,13 @@ export default function WeightsPage() {
               <input
                 type="range"
                 id="disrespectWeight"
-                min="-2"
-                max="2"
+                min="-10"
+                max="10"
                 step="0.1"
                 value={disrespectWeight}
                 onChange={e => setDisrespectWeight(parseFloat(e.target.value))}
               />
               <span>{disrespectWeight.toFixed(1)}</span>
-            </div>
-            <div className="form-group">
-              <label htmlFor="affiliationWeight">Affiliation Multiplier:</label>
-              <input
-                type="range"
-                id="affiliationWeight"
-                min="-2"
-                max="2"
-                step="0.1"
-                value={affiliationWeight}
-                onChange={e => setAffiliationWeight(parseFloat(e.target.value))}
-              />
-              <span>{affiliationWeight.toFixed(1)}</span>
             </div>
             <button type="submit" disabled={isAllocating}>
               {isAllocating ? "Running Allocation…" : "Run Allocation"}

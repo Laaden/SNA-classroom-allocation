@@ -211,7 +211,9 @@ async def update_weights(
         feedback: int = Form(...),
         advice: int = Form(...),
         disrespect: int = Form(...),
-        affiliation: int = Form(...)
+        affiliation: int = Form(...),
+        classSize: int = Form(...),
+        academic: int = Form(...),
 ):
     try:
         db["sna_weights"].delete_many({})
@@ -221,7 +223,9 @@ async def update_weights(
             "feedback": feedback,
             "advice": advice,
             "disrespect": disrespect,
-            "affiliation": affiliation
+            "affiliation": affiliation,
+            "classSize": classSize,
+            "academic": academic,
         })
         return {"status": "success", "message": "Weights updated."}
     except Exception as e:
@@ -396,7 +400,8 @@ class ClusterWeights(BaseModel):
     feedback: float
     advice: float
     disrespect: float
-    affiliation: float
+    academic: float
+    classSize: int
 
 @app.post("/update_weights/", status_code=status.HTTP_204_NO_CONTENT)
 def update_weights(weights: ClusterWeights):
