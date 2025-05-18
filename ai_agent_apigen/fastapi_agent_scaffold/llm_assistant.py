@@ -116,7 +116,7 @@ You must return a **single valid JSON object**, with no markdown formatting, com
     "interactionCount": 1
   }
 
-- Always start from a raw_* collection (not sna_student_raw) when the question involves counting or ranking interactions (e.g., “most friends”, “who gave the most advice”).
+- Always start from a raw_* collection (not sna_student_raw) when the question involves counting or ranking interactions (e.g., "most friends", "who gave the most advice").
 
 Return only the JSON object.
 """
