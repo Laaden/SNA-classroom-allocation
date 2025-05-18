@@ -4,7 +4,7 @@
     padding: 0;
     box-sizing: border-box;
   }
-  
+
   body {
     font-family: Arial, sans-serif;
     line-height: 1.6;
@@ -22,46 +22,46 @@
     text-align: center;
     color: #333;
   }
-  
+
   a {
     text-decoration: none;
     color: #0073e6;
   }
-  
+
   /* Header */
   .header-container {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 10px 20px;
-    background-color: #1a1a4b; 
+    background-color: #1a1a4b;
   }
-  
+
   /* Logo */
   .logo-link {
     font-size: 30px;
     font-weight: bold;
     color: #ffffff;
   }
-  
+
   /* Navigation Bar */
   .navbar {
     display: flex;
     background-color: #1a1a4b;
     padding: 10px 0;
   }
-  
+
   .nav-list {
     list-style: none;
     display: flex;
     margin: 0;
     padding: 0;
   }
-  
+
   .nav-list li {
     margin-left: 20px;
   }
-  
+
   .nav-list a {
     color: white;
     text-decoration: none;
@@ -69,11 +69,11 @@
     display: block;
     transition: background-color 0.3s ease;
   }
-  
+
   .nav-list .dropdown {
     position: relative;
   }
-  
+
   .nav-list .dropdown-content {
     display: none;
     position: absolute;
@@ -82,27 +82,27 @@
     box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
     z-index: 1;
   }
-  
+
   .nav-list .dropdown-content a {
     color: black;
     padding: 12px 16px;
     display: block;
   }
-  
+
   .nav-list .dropdown-content a:hover {
     background-color: #f1f1f1;
   }
-  
+
   .nav-list .dropdown:hover .dropdown-content {
     display: block;
   }
-  
+
   /* Layout */
   .content-container {
     margin: 0 2rem;
     padding-top: 2rem
   }
-  
+
   /* Hero Section */
   #hero {
     background: url('hero-bg.jpg') center/cover no-repeat;
@@ -114,15 +114,15 @@
     text-align: center;
     color: rgb(0, 0, 0);
   }
-  
+
   .hero-content h1 {
     font-size: 3rem;
   }
-  
+
   .hero-content p {
     font-size: 1.2rem;
   }
-  
+
   .cta-button {
     display: inline-block;
     margin-top: 1.5rem;
@@ -132,12 +132,12 @@
     border-radius: 5px;
     font-weight: bold;
   }
-  
+
   /* Section Headings */
   section {
     padding: 1rem 0;
   }
-  
+
   h2 {
     display: flex;
     color: #1a1a4b;
@@ -147,13 +147,13 @@
     margin: 30px 0;
     font-size: 2rem;
   }
-  
+
   /* Tables */
   th, td {
     font-family: 'Segoe UI', Tahoma, Verdana, sans-serif;
     font-size: 0.87rem;
   }
-  
+
   /* Forms */
   .login-form,
   .register-form,
@@ -183,11 +183,11 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       text-align: center;
   }
-  
+
   .recommend-form {
     margin: 0 3.5rem 20px 3.5rem;
   }
-  
+
   .login-input,
   .input-register {
     width: 100%;
@@ -203,7 +203,7 @@
     flex-direction: column;
     max-width: 500px;
   }
-  
+
   /* Buttons */
   button {
     padding: 1rem;
@@ -213,12 +213,12 @@
     border-radius: 5px;
     cursor: pointer;
   }
-  
+
   button:hover,
   .submit-button:hover {
     background-color: #02293e;
   }
-  
+
   /* Dashboard/Chart Styles */
   .chart-container {
     background-color: #fff;
@@ -227,71 +227,71 @@
     margin: 20px 0;
     padding: 20px;
   }
-  
+
   .chart-container h3 {
     text-align: center;
     color: #444;
     margin-bottom: 15px;
   }
-  
+
   .chart-card {
     background-color: white;
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }
-  
+
   .chart-card h3 {
     text-align: center;
     margin-bottom: 20px;
   }
-  
+
   canvas {
     max-width: 70%;
     height: auto;
     display: block;
   }
-  
+
   /* Profile Section */
   .profile-section {
     margin-bottom: 2rem;
   }
-  
+
   .profile-section h3 {
     background-color: #02293e;
     color: white;
     padding: 0.1rem;
     border-radius: 1px;
   }
-  
+
   .profile-info {
     padding: 1rem;
     border: 1px solid #ddd;
     border-radius: 1px;
     background-color: #f9f9f9;
   }
-  
+
   /* Utility Classes */
   .hidden {
     display: none;
   }
-  
+
   .button-group {
     display: flex;
     justify-content: center;
     gap: 10px;
   }
-  
+
   .button-edit {
     background-color: #007bff;
     border-color: #007bff;
   }
-  
+
   .button-danger {
     background-color: #dc3545;
     border-color: #dc3545;
   }
-  
+
   .button-container {
     display: flex;
     justify-content: flex-end;
@@ -304,11 +304,11 @@
     gap: 2rem;
     min-height: 60vh;
   }
-  
+
   .dashboard-left {
     flex: 1;
   }
-  
+
   .dashboard-right {
     flex: 3;
     display: flex;
@@ -319,7 +319,7 @@
     text-align: center;
     margin-bottom: 1rem;
   }
-  
+
   .dashboard-right > div {
     flex-grow: 1;
   }
@@ -328,7 +328,7 @@
   .group-selection,
   .edge-filter {
     margin-bottom: 2rem;
-  }  
+  }
 
   /* AI Query Page Styles */
 #ai-query {
@@ -373,7 +373,7 @@
   margin-top: 1rem;
 }
 
-.data-table th, 
+.data-table th,
 .data-table td {
   padding: 0.75rem;
   text-align: left;
@@ -401,14 +401,30 @@
   border: 1px solid #f5c6cb;
   border-radius: 4px;
 }
-  
+
+#allocationForm .form-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1em;
+}
+
+#allocationForm .form-group label {
+  width: 180px;
+  margin-right: 10px;
+}
+
+#allocationForm .form-group span {
+  width: 3em;
+  text-align: right;
+}
+
   /* Footer */
   footer {
     background-color: #f8f8f8;
     padding: 1rem 0;
     text-align: center;
   }
-  
+
   footer p {
     color: #333;
   }
